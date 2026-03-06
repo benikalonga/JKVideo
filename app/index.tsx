@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, FlatList, StyleSheet, SafeAreaView,
+  View, FlatList, StyleSheet,
   Text, TouchableOpacity, ActivityIndicator, Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoCard } from '../components/VideoCard';
@@ -52,7 +53,7 @@ export default function HomeScreen() {
 
       <FlatList
         data={videos}
-        keyExtractor={item => item.bvid}
+        keyExtractor={(item, index) => `${item.bvid}-${index}`}
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.list}
