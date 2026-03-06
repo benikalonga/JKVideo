@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Dimensions, Text, Platform } from 'react-native';
+import { NativeVideoPlayer } from './NativeVideoPlayer';
 
 const { width } = Dimensions.get('window');
 const VIDEO_HEIGHT = width * 0.5625;
@@ -30,8 +31,6 @@ export function VideoPlayer({ uri }: Props) {
     );
   }
 
-  // Native: use expo-av
-  const NativeVideoPlayer = require('./NativeVideoPlayer').NativeVideoPlayer;
   return <NativeVideoPlayer uri={uri} />;
 }
 

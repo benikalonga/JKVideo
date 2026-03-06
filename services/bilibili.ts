@@ -5,20 +5,41 @@ import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo } from './types';
 const BASE = 'https://api.bilibili.com';
 const PASSPORT = 'https://passport.bilibili.com';
 
+function generateBuvid3(): string {
+  const h = () => Math.floor(Math.random() * 16).toString(16);
+  const s = (n: number) => Array.from({ length: n }, h).join('');
+  return `${s(8)}-${s(4)}-${s(4)}-${s(4)}-${s(12)}infoc`;
+}
+
+async function getBuvid3(): Promise<string> {
+  let buvid3 = await AsyncStorage.getItem('buvid3');
+  if (!buvid3) {
+    buvid3 = generateBuvid3();
+    await AsyncStorage.setItem('buvid3', buvid3);
+  }
+  return buvid3;
+}
+
 const api = axios.create({
   baseURL: BASE,
   timeout: 10000,
   headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Referer': 'https://www.bilibili.com',
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/91.0',
+    'Origin': 'https://www.bilibili.com',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
   },
 });
 
 api.interceptors.request.use(async (config) => {
-  const sessdata = await AsyncStorage.getItem('SESSDATA');
-  if (sessdata) {
-    config.headers['Cookie'] = `SESSDATA=${sessdata}`;
-  }
+  const [sessdata, buvid3] = await Promise.all([
+    AsyncStorage.getItem('SESSDATA'),
+    getBuvid3(),
+  ]);
+  const cookies: string[] = [`buvid3=${buvid3}`];
+  if (sessdata) cookies.push(`SESSDATA=${sessdata}`);
+  config.headers['Cookie'] = cookies.join('; ');
   return config;
 });
 
@@ -34,7 +55,7 @@ export async function getVideoDetail(bvid: string): Promise<VideoItem> {
 
 export async function getPlayUrl(bvid: string, cid: number): Promise<PlayUrlResponse> {
   const res = await api.get('/x/player/playurl', {
-    params: { bvid, cid, qn: 64, fnval: 1 },
+    params: { bvid, cid, qn: 64, fnval: 0, platform: 'html5' },
   });
   return res.data.data as PlayUrlResponse;
 }

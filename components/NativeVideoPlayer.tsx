@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
 const VIDEO_HEIGHT = width * 0.5625;
@@ -9,23 +9,36 @@ interface Props {
   uri: string;
 }
 
+const buildHtml = (uri: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; background:#000; }
+  video { width:100vw; height:100vh; object-fit:contain; display:block; }
+</style>
+</head>
+<body>
+<video id="v" controls autoplay playsinline webkit-playsinline></video>
+<script>
+  document.getElementById('v').src = ${JSON.stringify(uri)};
+</script>
+</body>
+</html>
+`;
+
 export function NativeVideoPlayer({ uri }: Props) {
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const onPlaybackStatusUpdate = (s: AVPlaybackStatus) => {
-    if (s.isLoaded) setIsPlaying(s.isPlaying);
-  };
-
   return (
     <View style={styles.container}>
-      <Video
-        ref={videoRef}
-        source={{ uri, headers: { Referer: 'https://www.bilibili.com' } }}
-        style={styles.video}
-        resizeMode={ResizeMode.CONTAIN}
-        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-        useNativeControls
+      <WebView
+        source={{ html: buildHtml(uri) }}
+        style={styles.webview}
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        javaScriptEnabled
+        originWhitelist={['*']}
+        scrollEnabled={false}
       />
     </View>
   );
@@ -33,5 +46,5 @@ export function NativeVideoPlayer({ uri }: Props) {
 
 const styles = StyleSheet.create({
   container: { width, height: VIDEO_HEIGHT, backgroundColor: '#000' },
-  video: { width, height: VIDEO_HEIGHT },
+  webview: { width, height: VIDEO_HEIGHT, backgroundColor: '#000' },
 });
