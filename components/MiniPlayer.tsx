@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoStore } from '../store/videoStore';
+import { proxyImageUrl } from '../utils/imageUrl';
 
 export function MiniPlayer() {
   const { isActive, bvid, title, cover, clearVideo } = useVideoStore();
@@ -42,7 +43,7 @@ export function MiniPlayer() {
         onPress={() => router.push(`/video/${bvid}` as any)}
         activeOpacity={0.85}
       >
-        <Image source={{ uri: cover }} style={styles.cover} />
+        <Image source={{ uri: proxyImageUrl(cover) }} style={styles.cover} />
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.closeBtn} onPress={clearVideo}>

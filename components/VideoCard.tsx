@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import type { VideoItem } from '../services/types';
 import { formatCount, formatDuration } from '../utils/format';
+import { proxyImageUrl } from '../utils/imageUrl';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 24) / 2;
@@ -17,7 +18,7 @@ export function VideoCard({ item, onPress }: Props) {
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.thumbContainer}>
         <Image
-          source={{ uri: item.pic }}
+          source={{ uri: proxyImageUrl(item.pic) }}
           style={styles.thumb}
           resizeMode="cover"
         />

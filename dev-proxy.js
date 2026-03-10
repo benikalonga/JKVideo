@@ -56,5 +56,14 @@ function makeProxy(targetHost) {
 app.use('/bilibili-api',      makeProxy('api.bilibili.com'));
 app.use('/bilibili-passport', makeProxy('passport.bilibili.com'));
 
+// Image CDN proxy — strips the host segment and forwards to the real CDN with Referer
+app.use('/bilibili-img', (req, res) => {
+  const parts = req.url.split('/').filter(Boolean);
+  const host = parts[0];
+  if (!host || !host.endsWith('.hdslb.com')) return res.status(403).end();
+  req.url = '/' + parts.slice(1).join('/');
+  makeProxy(host)(req, res);
+});
+
 const PORT = process.env.PROXY_PORT || 3001;
 app.listen(PORT, () => console.log(`[Proxy] http://localhost:${PORT}`));

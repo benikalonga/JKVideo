@@ -3,13 +3,14 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Comment } from '../services/types';
 import { formatTime } from '../utils/format';
+import { proxyImageUrl } from '../utils/imageUrl';
 
 interface Props { item: Comment; }
 
 export function CommentItem({ item }: Props) {
   return (
     <View style={styles.row}>
-      <Image source={{ uri: item.member.avatar }} style={styles.avatar} />
+      <Image source={{ uri: proxyImageUrl(item.member.avatar) }} style={styles.avatar} />
       <View style={styles.content}>
         <Text style={styles.username}>{item.member.uname}</Text>
         <Text style={styles.message}>{item.content.message}</Text>

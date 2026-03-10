@@ -13,6 +13,7 @@ import { useVideoDetail } from '../../hooks/useVideoDetail';
 import { useComments } from '../../hooks/useComments';
 import { useVideoStore } from '../../store/videoStore';
 import { formatCount } from '../../utils/format';
+import { proxyImageUrl } from '../../utils/imageUrl';
 
 type Tab = 'intro' | 'comments';
 
@@ -90,7 +91,7 @@ export default function VideoDetailScreen() {
             </View>
 
             <View style={styles.upRow}>
-              <Image source={{ uri: video.owner.face }} style={styles.avatar} />
+              <Image source={{ uri: proxyImageUrl(video.owner.face) }} style={styles.avatar} />
               <Text style={styles.upName}>{video.owner.name}</Text>
               <TouchableOpacity style={styles.followBtn}>
                 <Text style={styles.followTxt}>+ 关注</Text>
