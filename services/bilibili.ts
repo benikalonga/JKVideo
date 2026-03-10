@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo } from './types';
+import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo, VideoShotData, HeatmapResponse } from './types';
 import { signWbi } from '../utils/wbi';
 
 const isWeb = Platform.OS === 'web';
@@ -95,10 +95,11 @@ export async function getVideoDetail(bvid: string): Promise<VideoItem> {
 }
 
 export async function getPlayUrl(bvid: string, cid: number, qn = 64): Promise<PlayUrlResponse> {
-  const fnval = qn >= 80 ? 16 : 0;
-  const res = await api.get('/x/player/playurl', {
-    params: { bvid, cid, qn, fnval, platform: 'html5', fourk: 1 },
-  });
+  const isAndroid = Platform.OS === 'android';
+  const params = isAndroid
+    ? { bvid, cid, qn, fnval: 16, fourk: 1 }
+    : { bvid, cid, qn, fnval: 0, platform: 'html5', fourk: 1 };
+  const res = await api.get('/x/player/playurl', { params });
   return res.data.data as PlayUrlResponse;
 }
 
@@ -113,6 +114,22 @@ export async function getComments(aid: number, pn = 1): Promise<Comment[]> {
     params: { oid: aid, type: 1, pn, ps: 20, sort: 2 },
   });
   return (res.data.data?.replies ?? []) as Comment[];
+}
+
+export async function getHeatmap(bvid: string): Promise<HeatmapResponse | null> {
+  try {
+    const res = await api.get('/pbp/data', { params: { bvid } });
+    return res.data.data as HeatmapResponse;
+  } catch { return null; }
+}
+
+export async function getVideoShot(bvid: string, cid: number): Promise<VideoShotData | null> {
+  try {
+    const res = await api.get('/x/player/videoshot', {
+      params: { bvid, cid, index: 1 },
+    });
+    return res.data.data as VideoShotData;
+  } catch { return null; }
 }
 
 export async function generateQRCode(): Promise<QRCodeInfo> {

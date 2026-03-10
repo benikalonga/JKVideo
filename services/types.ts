@@ -34,6 +34,32 @@ export interface Comment {
   replies: Comment[] | null;
 }
 
+export interface DashSegmentBase {
+  Initialization: string;
+  indexRange: string;
+}
+
+export interface DashVideoItem {
+  id: number;
+  baseUrl: string;
+  bandwidth: number;
+  mimeType: string;
+  codecs: string;
+  width: number;
+  height: number;
+  frameRate: string;
+  segmentBase: DashSegmentBase;
+}
+
+export interface DashAudioItem {
+  id: number;
+  baseUrl: string;
+  bandwidth: number;
+  mimeType: string;
+  codecs: string;
+  segmentBase: DashSegmentBase;
+}
+
 export interface PlayUrlResponse {
   durl?: Array<{
     url: string;
@@ -41,8 +67,9 @@ export interface PlayUrlResponse {
     size: number;
   }>;
   dash?: {
-    video: Array<{ id: number; baseUrl: string; codecs: string; bandwidth: number }>;
-    audio: Array<{ id: number; baseUrl: string; codecs: string; bandwidth: number }>;
+    duration: number;
+    video: DashVideoItem[];
+    audio: DashAudioItem[];
   };
   quality: number;
   accept_quality: number[];
@@ -52,4 +79,17 @@ export interface PlayUrlResponse {
 export interface QRCodeInfo {
   url: string;
   qrcode_key: string;
+}
+
+export interface VideoShotData {
+  img_x_len: number;
+  img_y_len: number;
+  img_x_size: number;
+  img_y_size: number;
+  image: string[];
+}
+
+export interface HeatmapResponse {
+  timestamp: number;
+  pb_data: string;
 }
