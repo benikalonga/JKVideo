@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00AEEC',
     borderRadius: 1,
   },
-  row: { paddingHorizontal: 8, justifyContent:'center' },
+  row: { paddingHorizontal: 8, justifyContent: 'flex-start' },
   leftCol: { marginLeft: 4, marginRight: 2 },
   rightCol: { marginLeft: 2, marginRight: 4 },
   footer: { height: 48, alignItems: 'center', justifyContent: 'center' },

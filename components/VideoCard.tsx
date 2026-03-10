@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   durationBadge: { position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
   durationText: { color: '#fff', fontSize: 10 },
   info: { padding: 6 },
-  title: { fontSize: 12, color: '#212121', lineHeight: 16, marginBottom: 4 },
+  title: { fontSize: 12, color: '#212121', lineHeight: 16, height: 32, marginBottom: 4 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   metaText: { fontSize: 11, color: '#999' },
   owner: { fontSize: 11, color: '#999', marginTop: 2 },
