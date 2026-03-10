@@ -29,9 +29,9 @@ export function VideoCard({ item, onPress }: Props) {
         <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
         <View style={styles.meta}>
           <Ionicons name="play" size={11} color="#999" />
-          <Text style={styles.metaText}>{formatCount(item.stat.view)}</Text>
+          <Text style={styles.metaText}>{formatCount(item.stat?.view ?? 0)}</Text>
         </View>
-        <Text style={styles.owner} numberOfLines={1}>{item.owner.name}</Text>
+        <Text style={styles.owner} numberOfLines={1}>{item.owner?.name ?? ''}</Text>
       </View>
     </TouchableOpacity>
   );

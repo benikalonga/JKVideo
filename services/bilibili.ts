@@ -2,6 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo } from './types';
+import { signWbi } from '../utils/wbi';
 
 const isWeb = Platform.OS === 'web';
 const BASE     = isWeb ? 'http://localhost:3001/bilibili-api'      : 'https://api.bilibili.com';
@@ -53,6 +54,35 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// WBI key cache (rotates ~daily, reuse within process lifetime)
+let wbiKeys: { imgKey: string; subKey: string } | null = null;
+
+async function getWbiKeys(): Promise<{ imgKey: string; subKey: string }> {
+  if (wbiKeys) return wbiKeys;
+  const res = await api.get('/x/web-interface/nav');
+  const { img_url, sub_url } = res.data.data.wbi_img;
+  const extract = (url: string) => url.split('/').pop()!.replace(/\.\w+$/, '');
+  wbiKeys = { imgKey: extract(img_url), subKey: extract(sub_url) };
+  return wbiKeys;
+}
+
+export async function getRecommendFeed(freshIdx = 0): Promise<VideoItem[]> {
+  const { imgKey, subKey } = await getWbiKeys();
+  const signed = signWbi(
+    { fresh_type: 3, fresh_idx: freshIdx, fresh_idx_1h: freshIdx, ps: 12, feed_version: 'V8' },
+    imgKey,
+    subKey,
+  );
+  const res = await api.get('/x/web-interface/wbi/index/top/feed/rcmd', { params: signed });
+  const items: any[] = res.data.data?.item ?? [];
+  return items.map(item => ({
+    ...item,
+    aid: item.id ?? item.aid,
+    pic: item.pic ?? item.cover,
+    owner: item.owner ?? { mid: 0, name: item.owner_info?.name ?? '', face: item.owner_info?.face ?? '' },
+  })) as VideoItem[];
+}
 
 export async function getPopularVideos(pn = 1): Promise<VideoItem[]> {
   const res = await api.get('/x/web-interface/popular', { params: { pn, ps: 20 } });

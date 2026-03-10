@@ -8,17 +8,17 @@ export interface VideoItem {
     name: string;
     face: string;
   };
-  stat: {
+  stat?: {
     view: number;
     danmaku: number;
     reply: number;
     like: number;
     coin: number;
     favorite: number;
-  };
+  } | null;
   duration: number;
   desc: string;
-  cid: number;
+  cid?: number;
   pages?: Array<{ cid: number; part: string }>;
 }
 
