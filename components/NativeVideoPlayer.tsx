@@ -6,7 +6,7 @@ import {
 import Video, { VideoRef } from 'react-native-video';
 import { Ionicons } from '@expo/vector-icons';
 import type { PlayUrlResponse } from '../services/types';
-import { buildDashDataUri } from '../utils/dash';
+import { buildDashMpdUri } from '../utils/dash';
 
 const { width } = Dimensions.get('window');
 const VIDEO_HEIGHT = width * 0.5625;
@@ -33,12 +33,21 @@ export function NativeVideoPlayer({
   onProgress, seekTo,
 }: Props) {
   const [showQuality, setShowQuality] = useState(false);
+  const [resolvedUrl, setResolvedUrl] = useState<string | undefined>();
   const videoRef = useRef<VideoRef>(null);
   const currentDesc = qualities.find(q => q.qn === currentQn)?.desc ?? (currentQn ? String(currentQn) : 'HD');
   const isDash = !!playData?.dash;
-  const url = isDash
-    ? buildDashDataUri(playData!, currentQn)
-    : playData?.durl?.[0]?.url;
+
+  useEffect(() => {
+    if (!playData) { setResolvedUrl(undefined); return; }
+    if (isDash) {
+      buildDashMpdUri(playData, currentQn).then(setResolvedUrl).catch(() => {
+        setResolvedUrl(playData.dash!.video[0]?.baseUrl);
+      });
+    } else {
+      setResolvedUrl(playData.durl?.[0]?.url);
+    }
+  }, [playData, currentQn]);
 
   useEffect(() => {
     if (seekTo !== undefined) videoRef.current?.seek(seekTo.t);
@@ -46,12 +55,12 @@ export function NativeVideoPlayer({
 
   return (
     <View style={[styles.container, style]}>
-      {url ? (
+      {resolvedUrl ? (
         <Video
           ref={videoRef}
           source={isDash
-            ? { uri: url, type: 'mpd', headers: BILIBILI_HEADERS }
-            : { uri: url, headers: BILIBILI_HEADERS }
+            ? { uri: resolvedUrl, type: 'mpd', headers: BILIBILI_HEADERS }
+            : { uri: resolvedUrl, headers: BILIBILI_HEADERS }
           }
           style={styles.video}
           resizeMode="contain"

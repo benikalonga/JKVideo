@@ -1,11 +1,18 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import type { PlayUrlResponse } from '../services/types';
 
 /**
- * 从 Bilibili DASH 响应生成 MPD data URI。
+ * 将 Bilibili DASH 响应写成 MPD 文件，返回 file:// URI 供 ExoPlayer 播放。
  * 选取 id === qn 的视频流（找不到则取第一条），带宽最高的音频流。
- * 返回 "data:application/dash+xml;base64,..." 供 react-native-video (ExoPlayer) 使用。
  */
-export function buildDashDataUri(playData: PlayUrlResponse, qn: number): string {
+export async function buildDashMpdUri(playData: PlayUrlResponse, qn: number): Promise<string> {
+  const xml = buildMpdXml(playData, qn);
+  const path = `${FileSystem.cacheDirectory}bili_dash.mpd`;
+  await FileSystem.writeAsStringAsync(path, xml, { encoding: FileSystem.EncodingType.UTF8 });
+  return path;
+}
+
+function buildMpdXml(playData: PlayUrlResponse, qn: number): string {
   const dash = playData.dash!;
 
   const video = dash.video.find(v => v.id === qn) ?? dash.video[0];
@@ -14,18 +21,17 @@ export function buildDashDataUri(playData: PlayUrlResponse, qn: number): string 
   );
 
   const dur = dash.duration;
-
   const vSeg = video.segment_base;
   const aSeg = audio.segment_base;
 
   const videoSegmentBase = vSeg
-    ? `\n        <SegmentBase indexRange="${vSeg.index_range}">\n          <Initialization range="${vSeg.initialization}"/>\n        </SegmentBase>`
+    ? `\n        <SegmentBase indexRange="${vSeg.index_range}"><Initialization range="${vSeg.initialization}"/></SegmentBase>`
     : '';
   const audioSegmentBase = aSeg
-    ? `\n        <SegmentBase indexRange="${aSeg.index_range}">\n          <Initialization range="${aSeg.initialization}"/>\n        </SegmentBase>`
+    ? `\n        <SegmentBase indexRange="${aSeg.index_range}"><Initialization range="${aSeg.initialization}"/></SegmentBase>`
     : '';
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011"
      profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"
      type="static"
@@ -43,8 +49,6 @@ export function buildDashDataUri(playData: PlayUrlResponse, qn: number): string 
     </AdaptationSet>
   </Period>
 </MPD>`;
-
-  return `data:application/dash+xml;base64,${btoa(xml)}`;
 }
 
 function escapeXml(s: string): string {
