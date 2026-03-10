@@ -58,7 +58,11 @@ export default function HomeScreen() {
         refreshing={refreshing}
         onEndReached={() => load()}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={loading ? <ActivityIndicator style={styles.footer} color="#00AEEC" /> : null}
+        ListFooterComponent={
+          <View style={styles.footer}>
+            {loading && <ActivityIndicator color="#00AEEC" />}
+          </View>
+        }
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -152,8 +156,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#00AEEC',
     borderRadius: 1,
   },
-  row: { paddingHorizontal: 8 },
+  row: { paddingHorizontal: 8, justifyContent:'center' },
   leftCol: { marginLeft: 4, marginRight: 2 },
   rightCol: { marginLeft: 2, marginRight: 4 },
-  footer: { marginVertical: 16 },
+  footer: { height: 48, alignItems: 'center', justifyContent: 'center' },
 });
