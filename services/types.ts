@@ -47,6 +47,7 @@ export interface DashVideoItem {
   codecs: string;
   width: number;
   height: number;
+  stat:any;
   frameRate: string;
   segment_base?: DashSegmentBase;
 }

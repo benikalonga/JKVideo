@@ -1,3 +1,4 @@
+// 构建 DASH MPD 文件内容
 export function buildMpd(
   videoUrl: string,
   videoCodecs: string,

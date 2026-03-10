@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Dimensions, Text, Platform, Modal, TouchableOpacity, StatusBar } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, Dimensions, Text, Platform, Modal, StatusBar } from 'react-native';
 import { NativeVideoPlayer } from './NativeVideoPlayer';
 import type { PlayUrlResponse } from '../services/types';
 
@@ -13,11 +12,11 @@ interface Props {
   currentQn: number;
   onQualityChange: (qn: number) => void;
   onMiniPlayer?: () => void;
-  onProgress?: (currentTime: number, duration: number) => void;
-  seekTo?: { t: number; v: number };
+  bvid?: string;
+  cid?: number;
 }
 
-export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, onMiniPlayer, onProgress, seekTo }: Props) {
+export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, onMiniPlayer, bvid, cid }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
 
   if (!playData) {
@@ -51,8 +50,8 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, o
         onQualityChange={onQualityChange}
         onFullscreen={() => setFullscreen(true)}
         onMiniPlayer={onMiniPlayer}
-        onProgress={onProgress}
-        seekTo={seekTo}
+        bvid={bvid}
+        cid={cid}
       />
 
       <Modal visible={fullscreen} animationType="fade" statusBarTranslucent>
@@ -64,13 +63,10 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, o
             currentQn={currentQn}
             onQualityChange={onQualityChange}
             onFullscreen={() => setFullscreen(false)}
+            bvid={bvid}
+            cid={cid}
             style={{ width: '100%', height: '100%' } as any}
-            onProgress={onProgress}
-            seekTo={seekTo}
           />
-          <TouchableOpacity style={styles.closeBtn} onPress={() => setFullscreen(false)}>
-            <Ionicons name="close" size={28} color="#fff" />
-          </TouchableOpacity>
         </View>
       </Modal>
     </>
@@ -82,12 +78,4 @@ const styles = StyleSheet.create({
   placeholder: { justifyContent: 'center', alignItems: 'center' },
   placeholderText: { color: '#fff', fontSize: 14 },
   fullscreenContainer: { flex: 1, backgroundColor: '#000' },
-  closeBtn: {
-    position: 'absolute',
-    top: 40,
-    right: 16,
-    padding: 8,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 20,
-  },
 });
