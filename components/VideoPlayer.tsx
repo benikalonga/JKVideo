@@ -20,8 +20,10 @@ interface Props {
 
 export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, onMiniPlayer, bvid, cid, danmakus, onTimeUpdate }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const VIDEO_HEIGHT = width * 0.5625;
+  // When ScreenOrientation is unavailable (Expo Go), simulate landscape via transform
+  const needsRotation = !ScreenOrientation && fullscreen;
   const lastTimeRef = useRef(0);
 
   const handleEnterFullscreen = async () => {
@@ -85,21 +87,26 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, o
 
       <Modal visible={fullscreen} animationType="fade" statusBarTranslucent>
         <StatusBar hidden />
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
-          <NativeVideoPlayer
-            playData={playData}
-            qualities={qualities}
-            currentQn={currentQn}
-            onQualityChange={onQualityChange}
-            onFullscreen={handleExitFullscreen}
-            bvid={bvid}
-            cid={cid}
-            danmakus={danmakus}
-            isFullscreen={true}
-            initialTime={lastTimeRef.current}
-            onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
-            style={{ width: '100%', height: '100%' }}
-          />
+        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={needsRotation
+            ? { width: height, height: width, transform: [{ rotate: '90deg' }] }
+            : { flex: 1, width: '100%' }
+          }>
+            <NativeVideoPlayer
+              playData={playData}
+              qualities={qualities}
+              currentQn={currentQn}
+              onQualityChange={onQualityChange}
+              onFullscreen={handleExitFullscreen}
+              bvid={bvid}
+              cid={cid}
+              danmakus={danmakus}
+              isFullscreen={true}
+              initialTime={lastTimeRef.current}
+              onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </View>
         </View>
       </Modal>
     </>
