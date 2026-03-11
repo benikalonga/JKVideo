@@ -28,6 +28,10 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
   const activated = useRef<Set<string>>(new Set());
   const prevTimeRef = useRef<number>(currentTime);
   const idCounter = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const pickLane = useCallback((): number | null => {
     const now = Date.now();
@@ -36,6 +40,12 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
     }
     return null;
   }, []);
+
+  useEffect(() => {
+    activated.current.clear();
+    laneAvailAt.current.fill(0);
+    setActiveDanmakus([]);
+  }, [danmakus]);
 
   useEffect(() => {
     if (!visible) return;
@@ -63,9 +73,9 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
 
     const newItems: ActiveDanmaku[] = [];
 
+    if (activated.current.size > 200) activated.current.clear(); // prevent memory leak
     for (const item of candidates) {
       const key = `${item.time}_${item.text}`;
-      if (activated.current.size > 200) activated.current.clear(); // prevent memory leak
       activated.current.add(key);
 
       if (item.mode === 1) {
@@ -94,7 +104,7 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
           duration,
           useNativeDriver: true,
         }).start(() => {
-          setActiveDanmakus(prev => prev.filter(d => d.id !== id));
+          if (mountedRef.current) setActiveDanmakus(prev => prev.filter(d => d.id !== id));
         });
       } else {
         // Fixed danmaku (mode 4 = bottom, mode 5 = top)
@@ -106,7 +116,7 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
           Animated.delay(2000),
           Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
         ]).start(() => {
-          setActiveDanmakus(prev => prev.filter(d => d.id !== id));
+          if (mountedRef.current) setActiveDanmakus(prev => prev.filter(d => d.id !== id));
         });
       }
     }

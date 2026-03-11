@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { PlayUrlResponse, VideoShotData, DanmakuItem } from '../services/types';
 import { buildDashMpdUri } from '../utils/dash';
 import { getHeatmap, getVideoShot } from '../services/bilibili';
-import { DanmakuOverlay } from './DanmakuOverlay';
+import DanmakuOverlay from './DanmakuOverlay';
 
 const BAR_H = 3;
 const BALL = 12;

@@ -47,7 +47,7 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle }
         <FlatList
           ref={flatListRef}
           data={visibleItems}
-          keyExtractor={(_, i) => String(i)}
+          keyExtractor={(item, i) => `${item.time}_${item.text}_${i}`}
           style={styles.list}
           renderItem={({ item }) => (
             <Text
