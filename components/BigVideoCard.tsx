@@ -11,7 +11,6 @@ import { getPlayUrl, getVideoDetail } from '../services/bilibili';
 import { proxyImageUrl } from '../utils/imageUrl';
 import { formatCount, formatDuration } from '../utils/format';
 import type { VideoItem } from '../services/types';
-import { useRouter } from 'expo-router';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const THUMB_H = SCREEN_W * 0.5625; // 16:9
