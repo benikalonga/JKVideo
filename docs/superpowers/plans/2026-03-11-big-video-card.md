@@ -358,13 +358,7 @@ const onViewableItemsChangedRef = useRef(
 
 - [ ] **Step 4: Replace `renderItem` with a row-aware version and remove stale import**
 
-After replacing `renderItem`, `VideoItem` is no longer directly referenced in `app/index.tsx`. Remove the now-unused import:
-```ts
-// Remove this line:
-import type { VideoItem } from "../services/types";
-```
-
-Replace the existing `renderItem` function:
+First, replace the existing `renderItem` function (keep the file valid at all times):
 ```ts
 const renderItem = ({ item: row }: { item: ListRow }) => {
   if (row.type === 'big') {
@@ -396,6 +390,12 @@ const renderItem = ({ item: row }: { item: ListRow }) => {
     </View>
   );
 };
+```
+
+Then remove the now-unused import (check the file for any other references to `VideoItem` before deleting — if none found, remove it):
+```ts
+// Remove this line:
+import type { VideoItem } from "../services/types";
 ```
 
 - [ ] **Step 5: Update `styles.row` in the StyleSheet**
@@ -430,7 +430,7 @@ viewabilityConfig={VIEWABILITY_CONFIG}
 onViewableItemsChanged={onViewableItemsChangedRef}
 ```
 
-Note: `react-native-video` is already installed in this project (confirmed by `components/NativeVideoPlayer.tsx` which imports `Video` from it). No additional installation needed.
+Note: `react-native-video` is already installed in this project. Confirmed: `components/NativeVideoPlayer.tsx` line 14 has `import Video, { VideoRef } from "react-native-video"`. No additional installation needed.
 
 - [ ] **Step 7: TypeScript check**
 
