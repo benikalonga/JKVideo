@@ -174,8 +174,7 @@ export async function pollQRCode(qrcode_key: string): Promise<{ code: number; co
 
 export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
   try {
-    const res = await axios.get(`${COMMENT_BASE}/x/v1/dm/list.so`, {
-      params: { oid: cid },
+    const res = await axios.get(`${COMMENT_BASE}/${cid}.xml`, {
       headers: isWeb ? {} : { Referer: 'https://www.bilibili.com', 'User-Agent': UA },
       responseType: 'text',
     });
