@@ -1,20 +1,33 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
-  View, StyleSheet,
-  Text, TouchableOpacity, ActivityIndicator, Animated, Image, RefreshControl,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { VideoCard } from '../components/VideoCard';
-import { LoginModal } from '../components/LoginModal';
-import { useVideoList } from '../hooks/useVideoList';
-import { useAuthStore } from '../store/authStore';
-import type { VideoItem } from '../services/types';
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Image,
+  RefreshControl,
+  ViewToken,
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { VideoCard } from "../components/VideoCard";
+import { LoginModal } from "../components/LoginModal";
+import { useVideoList } from "../hooks/useVideoList";
+import { useAuthStore } from "../store/authStore";
+import { toListRows, type ListRow, type BigRow } from "../utils/videoRows";
+import { BigVideoCard } from "../components/BigVideoCard";
 
 const HEADER_H = 44;
-const TAB_H    = 38;
-const NAV_H    = HEADER_H + TAB_H;
+const TAB_H = 38;
+const NAV_H = HEADER_H + TAB_H;
+
+const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 50 };
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -23,36 +36,76 @@ export default function HomeScreen() {
   const [showLogin, setShowLogin] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const clampedScroll = useRef(
-    Animated.diffClamp(scrollY, 0, NAV_H)
+  const [visibleBigKey, setVisibleBigKey] = useState<string | null>(null);
+  const rows = useMemo(() => toListRows(videos), [videos]);
+
+  const onViewableItemsChangedRef = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const bigRow = viewableItems.find(
+        (v) => v.item && (v.item as ListRow).type === 'big',
+      );
+      setVisibleBigKey(
+        bigRow ? (bigRow.item as BigRow).item.bvid : null,
+      );
+    },
   ).current;
-  const headerTranslate = clampedScroll.interpolate({
-    inputRange:  [0, NAV_H],
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, NAV_H],
     outputRange: [0, -NAV_H],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const renderItem = ({ item, index }: { item: VideoItem; index: number }) => (
-    <View style={index % 2 === 0 ? styles.leftCol : styles.rightCol}>
-      <VideoCard
-        item={item}
-        onPress={() => router.push(`/video/${item.bvid}` as any)}
-      />
-    </View>
-  );
+  const renderItem = ({ item: row }: { item: ListRow }) => {
+    if (row.type === 'big') {
+      return (
+        <BigVideoCard
+          item={row.item}
+          isVisible={visibleBigKey === row.item.bvid}
+          onPress={() => router.push(`/video/${row.item.bvid}` as any)}
+        />
+      );
+    }
+    // Normal pair row
+    return (
+      <View style={styles.row}>
+        <View style={styles.leftCol}>
+          <VideoCard
+            item={row.left}
+            onPress={() => router.push(`/video/${row.left.bvid}` as any)}
+          />
+        </View>
+        {row.right && (
+          <View style={styles.rightCol}>
+            <VideoCard
+              item={row.right}
+              onPress={() => router.push(`/video/${row.right!.bvid}` as any)}
+            />
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={["left", "right"]}>
       <Animated.FlatList
         style={styles.listContainer}
-        data={videos}
-        keyExtractor={(item, index) => `${item.bvid}-${index}`}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={{ paddingTop: insets.top + NAV_H + 8, paddingBottom: insets.bottom + 16 }}
+        data={rows}
+        keyExtractor={(row: any, index) =>
+          row.type === 'big'
+            ? `big-${row.item.bvid}`
+            : `pair-${row.left.bvid}-${row.right?.bvid ?? 'empty'}-${index}`
+        }
+        contentContainerStyle={{
+          paddingTop: insets.top + NAV_H + 6,
+          paddingBottom: insets.bottom + 16,
+        }}
         renderItem={renderItem}
         refreshControl={
           <RefreshControl
@@ -63,6 +116,8 @@ export default function HomeScreen() {
         }
         onEndReached={() => load()}
         onEndReachedThreshold={0.5}
+        viewabilityConfig={VIEWABILITY_CONFIG}
+        onViewableItemsChanged={onViewableItemsChangedRef}
         ListFooterComponent={
           <View style={styles.footer}>
             {loading && <ActivityIndicator color="#00AEEC" />}
@@ -70,7 +125,7 @@ export default function HomeScreen() {
         }
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          { useNativeDriver: true },
         )}
         scrollEventThrottle={16}
       />
@@ -79,7 +134,10 @@ export default function HomeScreen() {
       <Animated.View
         style={[
           styles.navBar,
-          { paddingTop: insets.top, transform: [{ translateY: headerTranslate }] },
+          {
+            paddingTop: insets.top,
+            transform: [{ translateY: headerTranslate }],
+          },
         ]}
       >
         <View style={styles.header}>
@@ -90,12 +148,16 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerBtn}
-              onPress={() => isLoggedIn ? logout() : setShowLogin(true)}
+              onPress={() => (isLoggedIn ? logout() : setShowLogin(true))}
             >
               {isLoggedIn && face ? (
                 <Image source={{ uri: face }} style={styles.userAvatar} />
               ) : (
-                <Ionicons name={isLoggedIn ? 'person' : 'person-outline'} size={22} color="#00AEEC" />
+                <Ionicons
+                  name={isLoggedIn ? "person" : "person-outline"}
+                  size={22}
+                  color="#00AEEC"
+                />
               )}
             </TouchableOpacity>
           </View>
@@ -113,56 +175,66 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f4f4f4' },
+  safe: { flex: 1, backgroundColor: "#f4f4f4" },
   listContainer: { flex: 1 },
   navBar: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
+    backgroundColor: "#fff",
+    overflow: "hidden",
     // 安卓投影
     elevation: 2,
     // iOS 投影
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
   },
   header: {
     height: HEADER_H,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
-  logo: { fontSize: 20, fontWeight: '800', color: '#00AEEC', letterSpacing: -0.5 },
-  headerRight: { flexDirection: 'row', gap: 8 },
+  logo: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#00AEEC",
+    letterSpacing: -0.5,
+  },
+  headerRight: { flexDirection: "row", gap: 8 },
   headerBtn: { padding: 6 },
-  userAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#eee' },
+  userAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#eee",
+  },
   tabRow: {
     height: TAB_H,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
-  tabActive: { fontSize: 15, fontWeight: '700', color: '#00AEEC' },
+  tabActive: { fontSize: 15, fontWeight: "700", color: "#00AEEC" },
   tabUnderline: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 16,
     width: 24,
     height: 2,
-    backgroundColor: '#00AEEC',
+    backgroundColor: "#00AEEC",
     borderRadius: 1,
   },
-  row: { paddingHorizontal: 8, justifyContent: 'flex-start' },
+  row: { flexDirection: 'row', paddingHorizontal: 1, justifyContent: "flex-start" },
   leftCol: { marginLeft: 4, marginRight: 2 },
   rightCol: { marginLeft: 2, marginRight: 4 },
-  footer: { height: 48, alignItems: 'center', justifyContent: 'center' },
+  footer: { height: 48, alignItems: "center", justifyContent: "center" },
 });
