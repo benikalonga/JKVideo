@@ -45,8 +45,6 @@ export default function HomeScreen() {
   const [visibleBigKey, setVisibleBigKey] = useState<string | null>(null);
   const rows = useMemo(() => toListRows(videos), [videos]);
 
-  // useRef-wrapped to satisfy FlatList's requirement that onViewableItemsChanged never changes identity after mount
-  //
   const onViewableItemsChangedRef = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       const bigRow = viewableItems.find(
@@ -58,11 +56,18 @@ export default function HomeScreen() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  
+  // 阻尼限制
+  const diffClamp = Animated.diffClamp(scrollY, 0, HEADER_H);
 
   const headerTranslate = scrollY.interpolate({
-    inputRange: [0, NAV_H],
-    outputRange: [0, -NAV_H],
+    inputRange: [0, HEADER_H],
+    outputRange: [0, -HEADER_H],
+    extrapolate: "clamp",
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_H * 0.2],
+    outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
@@ -78,37 +83,40 @@ export default function HomeScreen() {
     [],
   );
 
-  const renderItem = useCallback(({ item: row }: { item: ListRow }) => {
-    if (row.type === "big") {
-      return (
-        <BigVideoCard
-          item={row.item}
-          isVisible={visibleBigKey === row.item.bvid}
-          onPress={() => router.push(`/video/${row.item.bvid}` as any)}
-        />
-      );
-    }
-    // Normal pair row
-    const right = row.right;
-    return (
-      <View style={styles.row}>
-        <View style={styles.leftCol}>
-          <VideoCard
-            item={row.left}
-            onPress={() => router.push(`/video/${row.left.bvid}` as any)}
+  const renderItem = useCallback(
+    ({ item: row }: { item: ListRow }) => {
+      if (row.type === "big") {
+        return (
+          <BigVideoCard
+            item={row.item}
+            isVisible={visibleBigKey === row.item.bvid}
+            onPress={() => router.push(`/video/${row.item.bvid}` as any)}
           />
-        </View>
-        {right && (
-          <View style={styles.rightCol}>
+        );
+      }
+      // Normal pair row
+      const right = row.right;
+      return (
+        <View style={styles.row}>
+          <View style={styles.leftCol}>
             <VideoCard
-              item={right}
-              onPress={() => router.push(`/video/${right.bvid}` as any)}
+              item={row.left}
+              onPress={() => router.push(`/video/${row.left.bvid}` as any)}
             />
           </View>
-        )}
-      </View>
-    );
-  }, []);
+          {right && (
+            <View style={styles.rightCol}>
+              <VideoCard
+                item={right}
+                onPress={() => router.push(`/video/${right.bvid}` as any)}
+              />
+            </View>
+          )}
+        </View>
+      );
+    },
+    [visibleBigKey],
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["left", "right"]}>
@@ -155,12 +163,15 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <View style={styles.header}>
-          <Text style={styles.logo}>哔哩哔哩</Text>
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              opacity: headerOpacity,
+            },
+          ]}
+        >
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerBtn}>
-              <Ionicons name="search" size={22} color="#212121" />
-            </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerBtn}
               onPress={() => (isLoggedIn ? logout() : setShowLogin(true))}
@@ -175,8 +186,12 @@ export default function HomeScreen() {
                 />
               )}
             </TouchableOpacity>
+            <TouchableOpacity style={styles.headerBtn}>
+              <Ionicons name="search" size={22} color="#212121" />
+            </TouchableOpacity>
           </View>
-        </View>
+          <Text style={styles.logo}>哔哩哔哩</Text>
+        </Animated.View>
 
         <View style={styles.tabRow}>
           <Text style={styles.tabActive}>热门</Text>
@@ -241,12 +256,12 @@ const styles = StyleSheet.create({
   tabActive: { fontSize: 15, fontWeight: "700", color: "#00AEEC" },
   tabUnderline: {
     position: "absolute",
-    bottom: 0,
-    left: 16,
+    bottom: 4,
+    left: 20,
     width: 24,
-    height: 2,
+    height: 3,
     backgroundColor: "#00AEEC",
-    borderRadius: 1,
+    borderRadius: 4,
   },
   row: {
     flexDirection: "row",

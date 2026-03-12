@@ -1,21 +1,26 @@
 // components/BigVideoCard.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View, Text, Image, TouchableOpacity, StyleSheet,
-  useWindowDimensions, Animated,
-} from 'react-native';
-import Video from 'react-native-video';
-import { Ionicons } from '@expo/vector-icons';
-import { buildDashMpdUri } from '../utils/dash';
-import { getPlayUrl, getVideoDetail } from '../services/bilibili';
-import { proxyImageUrl } from '../utils/imageUrl';
-import { formatCount, formatDuration } from '../utils/format';
-import type { VideoItem } from '../services/types';
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  useWindowDimensions,
+  Animated,
+} from "react-native";
+import Video from "react-native-video";
+import { Ionicons } from "@expo/vector-icons";
+import { buildDashMpdUri } from "../utils/dash";
+import { getPlayUrl, getVideoDetail } from "../services/bilibili";
+import { proxyImageUrl } from "../utils/imageUrl";
+import { formatCount, formatDuration } from "../utils/format";
+import type { VideoItem } from "../services/types";
 
 const HEADERS = {
-  Referer: 'https://www.bilibili.com',
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  Referer: "https://www.bilibili.com",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 };
 
 interface Props {
@@ -69,10 +74,12 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
           if (!cancelled) setVideoUrl(playData.durl?.[0]?.url);
         }
       } catch (e) {
-        console.warn('BigVideoCard: failed to load play URL', e);
+        console.warn("BigVideoCard: failed to load play URL", e);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // videoUrl intentionally excluded — re-fetch guard prevents redundant fetches after URL is set
   }, [isVisible, item.bvid]);
 
@@ -82,7 +89,11 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
     setPaused(!isVisible);
     if (!isVisible) {
       // Restore thumbnail when leaving viewport
-      Animated.timing(thumbOpacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      Animated.timing(thumbOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
     }
   }, [isVisible, videoUrl]);
 
@@ -99,9 +110,11 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
       {/* Media area */}
-      <View style={[mediaDimensions, { position: 'relative' }]}>
+      <View style={[mediaDimensions, { position: "relative" }]}>
         {/* Thumbnail */}
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: thumbOpacity }]}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: thumbOpacity }]}
+        >
           <Image
             source={{ uri: proxyImageUrl(item.pic) }}
             style={mediaDimensions}
@@ -109,9 +122,18 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
           />
         </Animated.View>
 
+        <View style={styles.meta}>
+          <Ionicons name="play" size={11} color="#fff" />
+          <Text style={styles.metaText}>
+            {formatCount(item.stat?.view ?? 0)}
+          </Text>
+        </View>
+
         {/* Duration badge on thumbnail */}
         <View style={styles.durationBadge}>
-          <Text style={styles.durationText}>{formatDuration(item.duration)}</Text>
+          <Text style={styles.durationText}>
+            {formatDuration(item.duration)}
+          </Text>
         </View>
 
         {/* Video player — only mounted when URL is available */}
@@ -119,7 +141,7 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
           <Video
             source={
               isDash
-                ? { uri: videoUrl, type: 'mpd', headers: HEADERS }
+                ? { uri: videoUrl, type: "mpd", headers: HEADERS }
                 : { uri: videoUrl, headers: HEADERS }
             }
             style={StyleSheet.absoluteFill}
@@ -135,12 +157,13 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
 
       {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-        <View style={styles.meta}>
-          <Ionicons name="play" size={11} color="#999" />
-          <Text style={styles.metaText}>{formatCount(item.stat?.view ?? 0)}</Text>
-        </View>
-        <Text style={styles.owner} numberOfLines={1}>{item.owner?.name ?? ''}</Text>
+        <Text style={styles.title} numberOfLines={2}>
+          {item.title}
+        </Text>
+
+        <Text style={styles.owner} numberOfLines={1}>
+          {item.owner?.name ?? ""}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -150,24 +173,36 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 4,
     marginBottom: 6,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 6,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   durationBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 4,
     right: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 1,
     zIndex: 2,
   },
-  durationText: { color: '#fff', fontSize: 10 },
+  durationText: { color: "#fff", fontSize: 10 },
   info: { padding: 8 },
-  title: { fontSize: 14, color: '#212121', lineHeight: 18, marginBottom: 4 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  metaText: { fontSize: 11, color: '#999' },
-  owner: { fontSize: 11, color: '#999', marginTop: 2 },
+  title: { fontSize: 14, color: "#212121", lineHeight: 18, marginBottom: 4 },
+  meta: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    paddingHorizontal: 4,
+    borderRadius: 5,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 0,
+    gap: 2,
+    zIndex: 2,
+  },
+  metaText: { fontSize: 10, color: "#fff" },
+  owner: { fontSize: 11, color: "#999", marginTop: 2 },
 });

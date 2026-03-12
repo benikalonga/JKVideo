@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import pako from 'pako';
-import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo, VideoShotData, HeatmapResponse, DanmakuItem } from './types';
+import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo, VideoShotData, DanmakuItem } from './types';
 import { signWbi } from '../utils/wbi';
 import { parseDanmakuXml } from '../utils/danmaku';
 
@@ -121,13 +121,6 @@ export async function getComments(aid: number, pn = 1): Promise<Comment[]> {
     params: { oid: aid, type: 1, pn, ps: 20, sort: 2 },
   });
   return (res.data.data?.replies ?? []) as Comment[];
-}
-
-export async function getHeatmap(bvid: string): Promise<HeatmapResponse | null> {
-  try {
-    const res = await api.get('/pbp/data', { params: { bvid } });
-    return res.data.data as HeatmapResponse;
-  } catch { return null; }
 }
 
 export async function getVideoShot(bvid: string, cid: number): Promise<VideoShotData | null> {

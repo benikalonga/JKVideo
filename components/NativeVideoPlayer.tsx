@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { File, Directory, Paths } from "expo-file-system";
+import { formatDuration } from "../utils/format";
 import {
   View,
   StyleSheet,
@@ -20,7 +21,7 @@ import type {
   DanmakuItem,
 } from "../services/types";
 import { buildDashMpdUri } from "../utils/dash";
-import { getHeatmap, getVideoShot } from "../services/bilibili";
+import { getVideoShot } from "../services/bilibili";
 import DanmakuOverlay from "./DanmakuOverlay";
 
 const BAR_H = 3;
@@ -28,9 +29,6 @@ const BAR_H = 3;
 const BALL = 12;
 // 活跃状态下的拖动球增大尺寸，提升触控体验
 const BALL_ACTIVE = 16;
-// 进度条分段数，越大热力图越精细但性能越差
-const SEGMENTS = 100;
-// 热力图颜色从蓝（冷）到红（热）
 const HIDE_DELAY = 3000;
 
 const HEADERS = {
@@ -41,47 +39,6 @@ const HEADERS = {
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
-}
-
-function heatColor(v: number): string {
-  if (v < 0.5) {
-    const t = v * 2;
-    return `rgb(${Math.round(t * 255)},174,236)`;
-  }
-  const t = (v - 0.5) * 2;
-  return `rgb(251,${Math.round((1 - t) * 114)},${Math.round((1 - t) * 153)})`;
-}
-
-function decodeFloats(base64: string): number[] {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const view = new DataView(bytes.buffer);
-  const floats: number[] = [];
-  let i = 0;
-  while (i < bytes.length) {
-    const tag = bytes[i++];
-    const wt = tag & 0x7;
-    if (wt === 5) {
-      floats.push(view.getFloat32(i, true));
-      i += 4;
-    } else if (wt === 0) {
-      while (i < bytes.length && bytes[i++] & 0x80);
-    } else if (wt === 1) {
-      i += 8;
-    } else if (wt === 2) {
-      let len = 0,
-        shift = 0;
-      do {
-        const b = bytes[i++];
-        len |= (b & 0x7f) << shift;
-        shift += 7;
-        if (!(b & 0x80)) break;
-      } while (true);
-      i += len;
-    } else break;
-  }
-  return floats;
 }
 
 function decodePvBuffer(buffer: ArrayBuffer): number[] {
@@ -186,23 +143,6 @@ function findFrameIdx(timestamps: number[], seekTime: number): number {
   return lo;
 }
 
-function downsample(data: number[], n: number): number[] {
-  if (!data.length) return Array(n).fill(0);
-  const out = Array.from(
-    { length: n },
-    (_, i) => data[Math.floor((i / n) * data.length)],
-  );
-  const max = Math.max(...out);
-  return max ? out.map((v) => v / max) : out;
-}
-
-function formatTime(s: number): string {
-  const m = Math.floor(s / 60);
-  return `${m}:${Math.floor(s % 60)
-    .toString()
-    .padStart(2, "0")}`;
-}
-
 interface Props {
   playData: PlayUrlResponse | null;
   qualities: { qn: number; desc: string }[];
@@ -257,7 +197,6 @@ export function NativeVideoPlayer({
   const barWidthRef = useRef(300);
   const trackRef = useRef<View>(null);
 
-  const [heatSegments, setHeatSegments] = useState<number[]>([]);
   const [shots, setShots] = useState<VideoShotData | null>(null);
   const [shotTimestamps, setShotTimestamps] = useState<number[]>([]);
   const [showDanmaku, setShowDanmaku] = useState(true);
@@ -282,37 +221,25 @@ export function NativeVideoPlayer({
     }
   }, [playData, currentQn]);
 
-  // Heatmap + shots
+  // Video shots (thumbnails for seek preview)
   useEffect(() => {
     if (!bvid || !cid) return;
     let cancelled = false;
-    Promise.all([getHeatmap(bvid), getVideoShot(bvid, cid)]).then(
-      ([heatmap, shotData]) => {
-        if (cancelled) return;
-        if (heatmap?.pb_data) {
+    getVideoShot(bvid, cid).then((shotData) => {
+      if (cancelled) return;
+      if (shotData?.image?.length) {
+        setShots(shotData);
+        if (shotData.pvdata) {
           try {
-            setHeatSegments(
-              downsample(decodeFloats(heatmap.pb_data), SEGMENTS),
-            );
+            loadPvData(shotData.pvdata).then((r) => {
+              setShotTimestamps(r);
+            });
           } catch {
-            setHeatSegments([]);
+            setShotTimestamps([]);
           }
         }
-        if (shotData?.image?.length) {
-          setShots(shotData);
-          console.log(shotData.pvdata, "pvdata");
-          if (shotData.pvdata) {
-            try {
-              loadPvData(shotData.pvdata).then((r) => {
-                setShotTimestamps(r);
-              });
-            } catch {
-              setShotTimestamps([]);
-            }
-          }
-        }
-      },
-    );
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -463,7 +390,9 @@ export function NativeVideoPlayer({
             }}
           />
         </View>
-        <Text style={styles.thumbTime}>{formatTime(seekTime)}</Text>
+        <Text style={styles.thumbTime}>
+          {formatDuration(Math.floor(seekTime))}
+        </Text>
       </View>
     );
   };
@@ -522,7 +451,6 @@ export function NativeVideoPlayer({
 
       {showControls && (
         <>
-          {/* Top bar */}
           <LinearGradient
             colors={["rgba(0,0,0,0.55)", "transparent"]}
             style={styles.topBar}
@@ -570,27 +498,12 @@ export function NativeVideoPlayer({
               {...panResponder.panHandlers}
             >
               <View style={styles.track}>
-                {heatSegments.length > 0 ? (
-                  heatSegments.map((v, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.seg,
-                        {
-                          backgroundColor: heatColor(v),
-                          width: `${100 / SEGMENTS}%` as any,
-                        },
-                      ]}
-                    />
-                  ))
-                ) : (
-                  <View
-                    style={[
-                      styles.seg,
-                      { flex: 1, backgroundColor: "#00AEEC" },
-                    ]}
-                  />
-                )}
+                <View
+                  style={[
+                    styles.seg,
+                    { flex: 1, backgroundColor: "#00AEEC" },
+                  ]}
+                />
                 <View
                   style={[
                     styles.playedOverlay,
@@ -631,9 +544,11 @@ export function NativeVideoPlayer({
                   color="#fff"
                 />
               </TouchableOpacity>
-              <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+              <Text style={styles.timeText}>
+                {formatDuration(Math.floor(currentTime))}
+              </Text>
               <View style={{ flex: 1 }} />
-              <Text style={styles.timeText}>{formatTime(duration)}</Text>
+              <Text style={styles.timeText}>{formatDuration(duration)}</Text>
               <TouchableOpacity
                 style={styles.ctrlBtn}
                 onPress={() => setShowQuality(true)}
