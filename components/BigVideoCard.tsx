@@ -1,5 +1,11 @@
 // components/BigVideoCard.tsx
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -37,10 +43,16 @@ function clamp(v: number, lo: number, hi: number) {
 interface Props {
   item: VideoItem;
   isVisible: boolean;
+  isScrolling?: boolean;
   onPress: () => void;
 }
 
-export function BigVideoCard({ item, isVisible, onPress }: Props) {
+export const BigVideoCard = React.memo(function BigVideoCard({
+  item,
+  isVisible,
+  isScrolling,
+  onPress,
+}: Props) {
   const { width: SCREEN_W } = useWindowDimensions();
   const THUMB_H = SCREEN_W * 0.5625;
   const mediaDimensions = { width: SCREEN_W - 8, height: THUMB_H };
@@ -74,9 +86,9 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
     thumbOpacity.setValue(1);
   }, [item.bvid]);
 
-  // Fetch play URL when visible for the first time
+  // Preload: fetch play URL on mount (before card is visible)
   useEffect(() => {
-    if (!isVisible || videoUrl) return;
+    if (videoUrl) return;
     let cancelled = false;
     (async () => {
       try {
@@ -106,24 +118,36 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isVisible, item.bvid]);
+  }, [item.bvid]);
 
-  // Pause/resume when visibility changes
+  // Pause/resume based on visibility and scroll state
   useEffect(() => {
     if (!videoUrl) return;
-    setPaused(!isVisible);
     if (!isVisible) {
+      // Off-screen: pause, mute, show thumbnail
+      setPaused(true);
       setMuted(true);
       Animated.timing(thumbOpacity, {
         toValue: 1,
         duration: 150,
         useNativeDriver: true,
       }).start();
+    } else if (isScrolling) {
+      // Visible but scrolling: just pause (keep thumbnail hidden, keep mute state)
+      setPaused(true);
+    } else {
+      // Visible and not scrolling: play, fade out thumbnail
+      setPaused(false);
+      Animated.timing(thumbOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [isVisible, videoUrl]);
+  }, [isVisible, isScrolling, videoUrl]);
 
   const handleVideoReady = () => {
-    if (!isVisible) return;
+    if (!isVisible || isScrolling) return;
     setPaused(false);
     Animated.timing(thumbOpacity, {
       toValue: 0,
@@ -142,44 +166,62 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
 
   // Horizontal swipe to seek
   const swipeStartTime = useRef(0);
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > SWIPE_THRESHOLD && Math.abs(gs.dx) > Math.abs(gs.dy),
-      onMoveShouldSetPanResponderCapture: (_, gs) =>
-        Math.abs(gs.dx) > SWIPE_THRESHOLD && Math.abs(gs.dx) > Math.abs(gs.dy),
-      onPanResponderGrant: () => {
-        seekingRef.current = true;
-        swipeStartTime.current = currentTimeRef.current;
-      },
-      onPanResponderMove: (_, gs) => {
-        if (durationRef.current <= 0) return;
-        const delta = (gs.dx / SCREEN_W) * SWIPE_SECONDS;
-        const target = clamp(swipeStartTime.current + delta, 0, durationRef.current);
-        setSeekLabel(formatDuration(Math.floor(target)));
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (durationRef.current > 0) {
-          const delta = (gs.dx / SCREEN_W) * SWIPE_SECONDS;
-          const target = clamp(swipeStartTime.current + delta, 0, durationRef.current);
-          videoRef.current?.seek(target);
-          setCurrentTime(target);
-        }
-        seekingRef.current = false;
-        setSeekLabel(null);
-      },
-      onPanResponderTerminate: () => {
-        seekingRef.current = false;
-        setSeekLabel(null);
-      },
-    }),
-  ).current;
+  const screenWRef = useRef(SCREEN_W);
+  useEffect(() => {
+    screenWRef.current = SCREEN_W;
+  }, [SCREEN_W]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: (_, gs) =>
+          Math.abs(gs.dx) > SWIPE_THRESHOLD &&
+          Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+        onPanResponderGrant: () => {
+          seekingRef.current = true;
+          swipeStartTime.current = currentTimeRef.current;
+        },
+        onMoveShouldSetPanResponderCapture: (_, gs) =>
+          Math.abs(gs.dx) > SWIPE_THRESHOLD &&
+          Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+        onPanResponderMove: (_, gs) => {
+          if (durationRef.current <= 0) return;
+          const delta = (gs.dx / screenWRef.current) * SWIPE_SECONDS;
+          const target = clamp(
+            swipeStartTime.current + delta,
+            0,
+            durationRef.current,
+          );
+          setSeekLabel(formatDuration(Math.floor(target)));
+        },
+        onPanResponderRelease: (_, gs) => {
+          if (durationRef.current > 0) {
+            const delta = (gs.dx / screenWRef.current) * SWIPE_SECONDS;
+            const target = clamp(
+              swipeStartTime.current + delta,
+              0,
+              durationRef.current,
+            );
+            videoRef.current?.seek(target);
+            setCurrentTime(target);
+          }
+          seekingRef.current = false;
+          setSeekLabel(null);
+        },
+        onPanResponderTerminate: () => {
+          seekingRef.current = false;
+          setSeekLabel(null);
+        },
+      }),
+    [],
+  );
 
   const progressRatio = duration > 0 ? clamp(currentTime / duration, 0, 1) : 0;
   const bufferedRatio = duration > 0 ? clamp(buffered / duration, 0, 1) : 0;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+    <View style={styles.card}>
       {/* Media area */}
       <View style={[mediaDimensions, { position: "relative" }]}>
         {/* Video player — rendered first so it sits behind the thumbnail */}
@@ -194,11 +236,15 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
             muted={muted}
-            paused={paused}
+            paused={paused || seekingRef.current}
             repeat
             controls={false}
             onReadyForDisplay={handleVideoReady}
-            onProgress={({ currentTime: ct, seekableDuration: dur, playableDuration: buf }) => {
+            onProgress={({
+              currentTime: ct,
+              seekableDuration: dur,
+              playableDuration: buf,
+            }) => {
               if (!seekingRef.current) setCurrentTime(ct);
               if (dur > 0) setDuration(dur);
               setBuffered(buf);
@@ -219,12 +265,17 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
         </Animated.View>
 
         {/* Swipe gesture layer */}
-        <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+        <View
+          style={[StyleSheet.absoluteFill, { zIndex: 5 }]}
+          {...panResponder.panHandlers}
+        />
 
         {/* Seek time label */}
         {seekLabel && (
           <View style={styles.seekBadge}>
-            <Text style={styles.seekText}>{seekLabel}</Text>
+            <Text style={styles.seekText}>
+              {seekLabel} / {formatDuration(durationRef.current)}
+            </Text>
           </View>
         )}
 
@@ -264,32 +315,39 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
             <View
               style={[
                 styles.progressLayer,
-                { width: `${bufferedRatio * 100}%` as any, backgroundColor: "rgba(0,174,236,0.25)" },
+                {
+                  width: `${bufferedRatio * 100}%` as any,
+                  backgroundColor: "rgba(0,174,236,0.25)",
+                },
               ]}
             />
             <View
               style={[
                 styles.progressLayer,
-                { width: `${progressRatio * 100}%` as any, backgroundColor: "#00AEEC" },
+                {
+                  width: `${progressRatio * 100}%` as any,
+                  backgroundColor: "#00AEEC",
+                },
               ]}
             />
           </>
         )}
       </View>
-
       {/* Info */}
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>
-          {item.title}
-        </Text>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={2}>
+            {item.title}
+          </Text>
 
-        <Text style={styles.owner} numberOfLines={1}>
-          {item.owner?.name ?? ""}
-        </Text>
-      </View>
-    </TouchableOpacity>
+          <Text style={styles.owner} numberOfLines={1}>
+            {item.owner?.name ?? ""}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -320,7 +378,7 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 3,
+    zIndex: 6,
   },
   seekBadge: {
     position: "absolute",

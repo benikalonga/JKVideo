@@ -41,94 +41,31 @@ function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-function decodePvBuffer(buffer: ArrayBuffer): number[] {
-  const bytes = new Uint8Array(buffer);
-  const view = new DataView(buffer);
-  const timestamps: number[] = [];
+function decodePvBuffer(bytes: Uint8Array): number[] {
+  // B站 pvdata 格式：packed uint16 little-endian，每个值 = 帧时间戳（单位：10ms）
+  const result: number[] = [];
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
-  let i = 0;
-  while (i < bytes.length) {
-    const tag = bytes[i++];
-    const wireType = tag & 0x07;
-    const fieldNum = tag >> 3;
-
-    // 我们主要关心 repeated float32，通常 field 1 或直接数据
-    if (wireType === 5) {
-      // fixed32 / float32
-      if (i + 4 > bytes.length) break;
-      timestamps.push(view.getFloat32(i, true)); // little-endian
-      i += 4;
-    } else if (wireType === 2) {
-      // length-delimited → 进入子消息或 packed repeated
-      let len = 0;
-      let shift = 0;
-      while (true) {
-        if (i >= bytes.length) break;
-        const b = bytes[i++];
-        len |= (b & 0x7f) << shift;
-        shift += 7;
-        if (!(b & 0x80)) break;
-      }
-      const end = i + len;
-      // packed repeated float32 最常见情况：直接连续 float32
-      while (i + 4 <= end) {
-        timestamps.push(view.getFloat32(i, true));
-        i += 4;
-      }
-      // 如果不是 packed，也跳过
-    } else if (wireType === 0) {
-      // varint
-      while (i < bytes.length && bytes[i++] & 0x80);
-    } else if (wireType === 1) {
-      // fixed64
-      i += 8;
-    } else {
-      break; // 未知类型，停止
-    }
+  for (let i = 0; i + 1 < bytes.byteLength; i += 2) {
+    // uint16 值除以 100 转换为秒
+    result.push(view.getUint16(i, true) / 100);
   }
 
-  // 过滤掉明显异常值（比如负数或极大值）
-  return timestamps.filter((t) => t >= 0 && t < 86400); // 视频不会超过24小时
+  return result;
 }
 
-async function loadPvData(url: string) {
+async function loadPvData(url: string): Promise<number[]> {
   const realUrl = url.startsWith("//") ? `https:${url}` : url;
-
-  try {
-    // 选择缓存目录下的一个子目录（避免污染根缓存）
-    const cacheDir = new Directory(Paths.cache, "bili_pvdata");
-
-    // 如果目录不存在，创建（intermediates: true 自动创建父目录）
-    if (!cacheDir.exists) {
-      await cacheDir.create({ intermediates: true });
-    }
-
-    // 下载文件到这个目录（会自动用远程文件名，或你可以指定 File）
-    // 这里用 Directory 作为 destination，SDK 会从 URL 或 header 推导文件名
-    const downloadedFile: File = await File.downloadFileAsync(
-      realUrl,
-      cacheDir,
-      {
-        headers: HEADERS,
-        idempotent: true, // 如果文件已存在，覆盖（避免重复下载失败）
-      },
-    );
-    console.log("Downloaded to:", downloadedFile.uri);
-    // 读取为 base64（如果你原来的 decodeFloats/decodePvBuffer 用 base64）
-    // const base64 = await downloadedFile.base64();
-    // 更好：直接读 binary 为 Uint8Array，然后转 ArrayBuffer
-    const bytes: Uint8Array = await downloadedFile.bytes();
-    const nums = new Uint16Array(
-      bytes.buffer,
-      bytes.byteOffset,
-      bytes.byteLength / 2,
-    );
-
-    return nums;
-  } catch (error) {
-    console.error("loadPvData failed:", error);
-    throw error;
+  const cacheDir = new Directory(Paths.cache, "bili_pvdata");
+  if (!cacheDir.exists) {
+    await cacheDir.create({ intermediates: true });
   }
+  const downloadedFile = await File.downloadFileAsync(realUrl, cacheDir, {
+    headers: HEADERS,
+    idempotent: true,
+  });
+  const bytes: Uint8Array = await downloadedFile.bytes();
+  return decodePvBuffer(bytes);
 }
 
 function findFrameIdx(timestamps: number[], seekTime: number): number {
@@ -231,13 +168,9 @@ export function NativeVideoPlayer({
       if (shotData?.image?.length) {
         setShots(shotData);
         if (shotData.pvdata) {
-          try {
-            loadPvData(shotData.pvdata).then((r) => {
-              setShotTimestamps(r);
-            });
-          } catch {
-            setShotTimestamps([]);
-          }
+          loadPvData(shotData.pvdata)
+            .then((r) => setShotTimestamps(r))
+            .catch(() => setShotTimestamps([]));
         }
       }
     });
@@ -351,10 +284,11 @@ export function NativeVideoPlayer({
 
     // Use pvdata timestamps for accurate frame lookup; fall back to linear interpolation
     const seekTime = touchRatio * duration;
-    const frameIdx =
+    const rawIdx =
       shotTimestamps.length > 0
         ? findFrameIdx(shotTimestamps, seekTime)
         : Math.floor(touchRatio * (totalFrames - 1));
+    const frameIdx = clamp(rawIdx, 0, totalFrames - 1);
 
     const sheetIdx = Math.floor(frameIdx / framesPerSheet);
     const local = frameIdx % framesPerSheet;
@@ -421,7 +355,11 @@ export function NativeVideoPlayer({
           resizeMode="contain"
           controls={false}
           paused={paused}
-          onProgress={({ currentTime: ct, seekableDuration: dur, playableDuration: buf }) => {
+          onProgress={({
+            currentTime: ct,
+            seekableDuration: dur,
+            playableDuration: buf,
+          }) => {
             setCurrentTime(ct);
             if (dur > 0) setDuration(dur);
             setBuffered(buf);
@@ -505,14 +443,20 @@ export function NativeVideoPlayer({
                 <View
                   style={[
                     styles.trackLayer,
-                    { width: `${bufferedRatio * 100}%` as any, backgroundColor: "rgba(255,255,255,0.35)" },
+                    {
+                      width: `${bufferedRatio * 100}%` as any,
+                      backgroundColor: "rgba(255,255,255,0.35)",
+                    },
                   ]}
                 />
                 {/* Played: accent color on top */}
                 <View
                   style={[
                     styles.trackLayer,
-                    { width: `${progressRatio * 100}%` as any, backgroundColor: "#00AEEC" },
+                    {
+                      width: `${progressRatio * 100}%` as any,
+                      backgroundColor: "#00AEEC",
+                    },
                   ]}
                 />
               </View>

@@ -18,8 +18,8 @@ import {
   FlatList,
   ScrollView,
   Linking,
-  useWindowDimensions,
 } from "react-native";
+import PagerView from "react-native-pager-view";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -83,10 +83,9 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("hot");
   const [liveAreaId, setLiveAreaId] = useState(0);
 
-  const { width: SCREEN_W } = useWindowDimensions();
   const [visibleBigKey, setVisibleBigKey] = useState<string | null>(null);
   const rows = useMemo(() => toListRows(pages, liveRooms), [pages, liveRooms]);
-  const tabAnim = useRef(new Animated.Value(0)).current;
+  const pagerRef = useRef<PagerView>(null);
 
   const hotListRef = useRef<FlatList>(null);
   const liveListRef = useRef<FlatList>(null);
@@ -163,20 +162,22 @@ export default function HomeScreen() {
         return;
       }
       // 切换 tab
+      pagerRef.current?.setPage(key === "hot" ? 0 : 1);
       setActiveTab(key);
-      Animated.timing(tabAnim, {
-        toValue: key === "hot" ? 0 : 1,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
       if (key === "live" && rooms.length === 0) {
         liveLoad(true, liveAreaId);
       }
-      // 重置 header 动画
-      if (key === "hot") {
-        scrollY.setValue(0);
-      } else {
-        liveScrollY.setValue(0);
+    },
+    [activeTab, rooms.length, liveAreaId],
+  );
+
+  const onPageSelected = useCallback(
+    (e: any) => {
+      const key: TabKey = e.nativeEvent.position === 0 ? "hot" : "live";
+      if (key === activeTab) return;
+      setActiveTab(key);
+      if (key === "live" && rooms.length === 0) {
+        liveLoad(true, liveAreaId);
       }
     },
     [activeTab, rooms.length, liveAreaId],
@@ -192,13 +193,16 @@ export default function HomeScreen() {
     [liveAreaId, liveLoad],
   );
 
+  const visibleBigKeyRef = useRef(visibleBigKey);
+  visibleBigKeyRef.current = visibleBigKey;
+
   const renderItem = useCallback(
     ({ item: row }: { item: ListRow }) => {
       if (row.type === "big") {
         return (
           <BigVideoCard
             item={row.item}
-            isVisible={visibleBigKey === row.item.bvid}
+            isVisible={visibleBigKeyRef.current === row.item.bvid}
             onPress={() => router.push(`/video/${row.item.bvid}` as any)}
           />
         );
@@ -237,18 +241,18 @@ export default function HomeScreen() {
         </View>
       );
     },
-    [visibleBigKey],
+    [],
   );
 
   const renderLiveItem = useCallback(
     ({ item }: { item: { left: LiveRoom; right?: LiveRoom } }) => (
       <View style={styles.row}>
         <View style={styles.leftCol}>
-          <LiveCard item={item.left}  />
+          <LiveCard item={item.left} />
         </View>
         {item.right && (
           <View style={styles.rightCol}>
-            <LiveCard item={item.right}  />
+            <LiveCard item={item.right} />
           </View>
         )}
       </View>
@@ -270,127 +274,121 @@ export default function HomeScreen() {
   const currentHeaderOpacity =
     activeTab === "hot" ? headerOpacity : liveHeaderOpacity;
 
-  const tabSlideX = tabAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -SCREEN_W],
-  });
-
   return (
     <SafeAreaView style={styles.safe} edges={["left", "right"]}>
       {/* 滑动切换容器 */}
-      <View style={styles.tabSlideOuter}>
-        <Animated.View
-          style={[
-            styles.tabSlideRow,
-            { width: SCREEN_W * 2, transform: [{ translateX: tabSlideX }] },
-          ]}
-        >
-          {/* 热门列表 */}
-          <View style={{ width: SCREEN_W, height: "100%" }}>
-            <Animated.FlatList
-              ref={hotListRef as any}
-              style={styles.listContainer}
-              data={rows}
-              keyExtractor={(row: any) =>
-                row.type === "big"
-                  ? `big-${row.item.bvid}`
-                  : row.type === "live"
-                    ? `live-${row.left.roomid}-${row.right?.roomid ?? "empty"}`
-                    : `pair-${row.left.bvid}-${row.right?.bvid ?? "empty"}`
-              }
-              contentContainerStyle={{
-                paddingTop: insets.top + NAV_H + 6,
-                paddingBottom: insets.bottom + 16,
-              }}
-              renderItem={renderItem}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={refresh}
-                  progressViewOffset={insets.top + NAV_H}
-                />
-              }
-              onEndReached={() => load()}
-              onEndReachedThreshold={0.5}
-              extraData={visibleBigKey}
-              viewabilityConfig={VIEWABILITY_CONFIG}
-              onViewableItemsChanged={onViewableItemsChangedRef}
-              ListFooterComponent={
-                <View style={styles.footer}>
-                  {loading && <ActivityIndicator color="#00AEEC" />}
-                </View>
-              }
-              onScroll={onScroll}
-              scrollEventThrottle={16}
-            />
-          </View>
+      <PagerView
+        ref={pagerRef}
+        style={styles.pager}
+        initialPage={0}
+        scrollEnabled={false}
+        onPageSelected={onPageSelected}
+      >
+        {/* 热门列表 */}
+        <View key="hot" collapsable={false}>
+          <Animated.FlatList
+            ref={hotListRef as any}
+            style={styles.listContainer}
+            data={rows}
+            keyExtractor={(row: any) =>
+              row.type === "big"
+                ? `big-${row.item.bvid}`
+                : row.type === "live"
+                  ? `live-${row.left.roomid}-${row.right?.roomid ?? "empty"}`
+                  : `pair-${row.left.bvid}-${row.right?.bvid ?? "empty"}`
+            }
+            contentContainerStyle={{
+              paddingTop: insets.top + NAV_H + 6,
+              paddingBottom: insets.bottom + 16,
+            }}
+            renderItem={renderItem}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={refresh}
+                progressViewOffset={insets.top + NAV_H}
+              />
+            }
+            onEndReached={() => load()}
+            onEndReachedThreshold={0.5}
+            extraData={visibleBigKey}
+            viewabilityConfig={VIEWABILITY_CONFIG}
+            onViewableItemsChanged={onViewableItemsChangedRef}
+            ListFooterComponent={
+              <View style={styles.footer}>
+                {loading && <ActivityIndicator color="#00AEEC" />}
+              </View>
+            }
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+          />
+        </View>
 
-          {/* 直播列表 */}
-          <View style={{ width: SCREEN_W, height: "100%" }}>
-            <Animated.FlatList
-              ref={liveListRef as any}
-              style={styles.listContainer}
-              data={liveRows}
-              keyExtractor={(item: any, index: number) =>
-                `live-${index}-${item.left.roomid}-${item.right?.roomid ?? "empty"}`
-              }
-              contentContainerStyle={{
-                paddingTop: insets.top + NAV_H + 6,
-                paddingBottom: insets.bottom + 16,
-              }}
-              renderItem={renderLiveItem}
-              ListHeaderComponent={
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.areaTabRow}
-                  contentContainerStyle={styles.areaTabContent}
-                >
-                  {LIVE_AREAS.map((area) => (
-                    <TouchableOpacity
-                      key={area.id}
+        {/* 直播列表 */}
+        <View key="live" collapsable={false}>
+          <Animated.FlatList
+            ref={liveListRef as any}
+            style={styles.listContainer}
+            data={liveRows}
+            keyExtractor={(item: any, index: number) =>
+              `live-${index}-${item.left.roomid}-${item.right?.roomid ?? "empty"}`
+            }
+            contentContainerStyle={{
+              paddingTop: insets.top + NAV_H + 6,
+              paddingBottom: insets.bottom + 16,
+            }}
+            renderItem={renderLiveItem}
+            ListHeaderComponent={
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.areaTabRow}
+                contentContainerStyle={styles.areaTabContent}
+              >
+                {LIVE_AREAS.map((area) => (
+                  <TouchableOpacity
+                    key={area.id}
+                    style={[
+                      styles.areaTab,
+                      liveAreaId === area.id && styles.areaTabActive,
+                    ]}
+                    onPress={() => handleLiveAreaPress(area.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
                       style={[
-                        styles.areaTab,
-                        liveAreaId === area.id && styles.areaTabActive,
+                        styles.areaTabText,
+                        liveAreaId === area.id && styles.areaTabTextActive,
                       ]}
-                      onPress={() => handleLiveAreaPress(area.id)}
-                      activeOpacity={0.7}
                     >
-                      <Text
-                        style={[
-                          styles.areaTabText,
-                          liveAreaId === area.id && styles.areaTabTextActive,
-                        ]}
-                      >
-                        {area.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              }
-              refreshControl={
-                <RefreshControl
-                  refreshing={liveRefreshing}
-                  onRefresh={() => liveRefresh(liveAreaId)}
-                  progressViewOffset={insets.top + NAV_H}
-                />
-              }
-              onEndReached={() => liveLoad()}
-              onEndReachedThreshold={1.5}
-              ListFooterComponent={
-                liveLoading ? (
-                  <View style={styles.footer}>
-                    <ActivityIndicator color="#00AEEC" />
-                    <Text style={styles.footerText}>加载中...</Text>
-                  </View>
-                ) : null
-              }
-              onScroll={onLiveScroll}
-              scrollEventThrottle={16}
-            />
-          </View>
-        </Animated.View>
-      </View>
+                      {area.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={liveRefreshing}
+                onRefresh={() => liveRefresh(liveAreaId)}
+                progressViewOffset={insets.top + NAV_H}
+              />
+            }
+            onEndReached={() => liveLoad()}
+            onEndReachedThreshold={1.5}
+            ListFooterComponent={
+              liveLoading ? (
+                <View style={styles.footer}>
+                  <ActivityIndicator color="#00AEEC" />
+                  <Text style={styles.footerText}>加载中...</Text>
+                </View>
+              ) : null
+            }
+            onScroll={onLiveScroll}
+            scrollEventThrottle={16}
+          />
+        </View>
+      </PagerView>
 
       {/* 绝对定位导航栏 */}
       <Animated.View
@@ -461,8 +459,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f4f4f4" },
-  tabSlideOuter: { flex: 1, overflow: "hidden" },
-  tabSlideRow: { flexDirection: "row", height: "100%" },
+  pager: { flex: 1 },
   listContainer: { flex: 1 },
   navBar: {
     position: "absolute",

@@ -38,10 +38,15 @@ export function LoginModal({ visible, onClose }: Props) {
       if (result.code === 86090) setStatus('scanned');
       if (result.code === 0 && result.cookie) {
         clearInterval(pollRef.current!);
-        await login(result.cookie, '', '');
-        setStatus('done');
-        // 登录后异步拉取用户头像和昵称
-        getUserInfo().then(info => setProfile(info.face, info.uname, String(info.mid))).catch(() => {});
+        try {
+          await login(result.cookie, '', '');
+          setStatus('done');
+          // 登录后异步拉取用户头像和昵称
+          const info = await getUserInfo();
+          setProfile(info.face, info.uname, String(info.mid));
+        } catch {
+          setStatus('error');
+        }
         onClose();
       }
     }, 2000);

@@ -1,27 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { getComments } from '../services/bilibili';
 import type { Comment } from '../services/types';
 
 export function useComments(aid: number) {
   const [comments, setComments] = useState<Comment[]>([]);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(1);
+  const loadingRef = useRef(false);
 
   const load = useCallback(async () => {
-    if (loading || !hasMore || !aid) return;
+    if (loadingRef.current || !hasMore || !aid) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
-      const data = await getComments(aid, page);
+      const data = await getComments(aid, pageRef.current);
       if (data.length === 0) { setHasMore(false); return; }
       setComments(prev => [...prev, ...data]);
-      setPage(p => p + 1);
+      pageRef.current += 1;
     } catch (e) {
       console.error('Failed to load comments', e);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  }, [aid, page, loading, hasMore]);
+  }, [aid, hasMore]);
 
   return { comments, loading, hasMore, load };
 }

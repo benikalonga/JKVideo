@@ -1,13 +1,16 @@
 import React, { useRef } from 'react';
 import {
   View, Text, Image, StyleSheet, TouchableOpacity,
-  Animated, PanResponder,
+  Animated, PanResponder, Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoStore } from '../store/videoStore';
 import { proxyImageUrl } from '../utils/imageUrl';
+
+const MINI_W = 160;
+const MINI_H = 90;
 
 export function MiniPlayer() {
   const { isActive, bvid, title, cover, clearVideo } = useVideoStore();
@@ -18,13 +21,22 @@ export function MiniPlayer() {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
-      onPanResponderRelease: () => {
-        pan.flattenOffset();
-      },
       onPanResponderGrant: () => {
         pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
         pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+        // Clamp to screen bounds
+        const { width: sw, height: sh } = Dimensions.get('window');
+        const curX = (pan.x as any)._value;
+        const curY = (pan.y as any)._value;
+        const clampedX = Math.max(-sw + MINI_W + 12, Math.min(12, curX));
+        const clampedY = Math.max(-sh + MINI_H + 60, Math.min(60, curY));
+        if (curX !== clampedX || curY !== clampedY) {
+          Animated.spring(pan, { toValue: { x: clampedX, y: clampedY }, useNativeDriver: false }).start();
+        }
       },
     })
   ).current;

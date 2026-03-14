@@ -52,7 +52,9 @@ export function useVideoDetail(bvid: string) {
   // 登录状态变化时重新拉取清晰度列表（登录后可能获得更高画质）
   useEffect(() => {
     if (cidRef.current) {
-      fetchPlayData(cidRef.current, 120, true).catch(() => {});
+      fetchPlayData(cidRef.current, 120, true).catch((e) => {
+        console.warn('Failed to refresh quality list after login change:', e);
+      });
     }
   }, [isLoggedIn]);
 

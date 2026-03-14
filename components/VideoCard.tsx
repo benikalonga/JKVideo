@@ -20,7 +20,7 @@ interface Props {
   onPress: () => void;
 }
 
-export function VideoCard({ item, onPress }: Props) {
+export const VideoCard = React.memo(function VideoCard({ item, onPress }: Props) {
   return (
     <TouchableOpacity
       style={styles.card}
@@ -55,7 +55,7 @@ export function VideoCard({ item, onPress }: Props) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

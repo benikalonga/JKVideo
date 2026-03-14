@@ -23,7 +23,7 @@ interface Props {
   fullWidth?: boolean;
 }
 
-export function LiveCard({
+export const LiveCard = React.memo(function LiveCard({
   item,
   onPress,
   fullWidth,
@@ -73,7 +73,7 @@ export function LiveCard({
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

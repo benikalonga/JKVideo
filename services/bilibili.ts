@@ -61,16 +61,28 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// WBI key cache (rotates ~daily, reuse within process lifetime)
+// WBI key cache (rotates ~daily)
 let wbiKeys: { imgKey: string; subKey: string } | null = null;
+let wbiKeysTimestamp = 0;
+const WBI_KEYS_TTL = 12 * 60 * 60 * 1000; // 12 hours
 
 async function getWbiKeys(): Promise<{ imgKey: string; subKey: string }> {
-  if (wbiKeys) return wbiKeys;
-  const res = await api.get('/x/web-interface/nav');
-  const { img_url, sub_url } = res.data.data.wbi_img;
-  const extract = (url: string) => url.split('/').pop()!.replace(/\.\w+$/, '');
-  wbiKeys = { imgKey: extract(img_url), subKey: extract(sub_url) };
-  return wbiKeys;
+  if (wbiKeys && Date.now() - wbiKeysTimestamp < WBI_KEYS_TTL) return wbiKeys;
+  try {
+    const res = await api.get('/x/web-interface/nav');
+    const wbiImg = res.data?.data?.wbi_img;
+    if (!wbiImg?.img_url || !wbiImg?.sub_url) {
+      if (wbiKeys) return wbiKeys; // fallback to stale cache
+      throw new Error('Failed to get WBI keys: missing wbi_img data');
+    }
+    const extract = (url: string) => url.split('/').pop()!.replace(/\.\w+$/, '');
+    wbiKeys = { imgKey: extract(wbiImg.img_url), subKey: extract(wbiImg.sub_url) };
+    wbiKeysTimestamp = Date.now();
+    return wbiKeys;
+  } catch (e) {
+    if (wbiKeys) return wbiKeys; // fallback to stale cache on network error
+    throw e;
+  }
 }
 
 export async function getRecommendFeed(freshIdx = 0): Promise<VideoItem[]> {
@@ -157,9 +169,12 @@ export async function pollQRCode(qrcode_key: string): Promise<{ code: number; co
       cookie = res.headers['x-sessdata'] as string | undefined;
     } else {
       const setCookie = res.headers['set-cookie'];
-      const match = setCookie?.find((c: string) => c.includes('SESSDATA'));
+      const match = setCookie?.find((c: string) => c.includes('SESSDATA='));
       if (match) {
-        cookie = match.split(';')[0].replace('SESSDATA=', '');
+        const sessPart = match.split(';').find((p: string) => p.trim().startsWith('SESSDATA='));
+        if (sessPart) {
+          cookie = sessPart.trim().replace('SESSDATA=', '');
+        }
       }
     }
   }
