@@ -31,7 +31,7 @@ import { LoginModal } from "../components/LoginModal";
 import { useVideoList } from "../hooks/useVideoList";
 import { useLiveList } from "../hooks/useLiveList";
 import { useAuthStore } from "../store/authStore";
-import { toListRows, type ListRow, type BigRow } from "../utils/videoRows";
+import { toListRows, type ListRow, type BigRow, type LiveRow } from "../utils/videoRows";
 import { BigVideoCard } from "../components/BigVideoCard";
 import type { LiveRoom } from "../services/types";
 
@@ -62,7 +62,7 @@ const LIVE_AREAS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { pages, loading, refreshing, load, refresh } = useVideoList();
+  const { pages, liveRooms, loading, refreshing, load, refresh } = useVideoList();
   const {
     rooms,
     loading: liveLoading,
@@ -77,7 +77,7 @@ export default function HomeScreen() {
   const [liveAreaId, setLiveAreaId] = useState(0);
 
   const [visibleBigKey, setVisibleBigKey] = useState<string | null>(null);
-  const rows = useMemo(() => toListRows(pages), [pages]);
+  const rows = useMemo(() => toListRows(pages, liveRooms), [pages, liveRooms]);
 
   const hotListRef = useRef<FlatList>(null);
   const liveListRef = useRef<FlatList>(null);
@@ -186,14 +186,28 @@ export default function HomeScreen() {
           <BigVideoCard
             item={row.item}
             isVisible={visibleBigKey === row.item.bvid}
-            onPress={() => {
-              if (row.item.goto === 'live' && row.item.roomid) {
-                Linking.openURL(`https://live.bilibili.com/${row.item.roomid}`);
-              } else {
-                router.push(`/video/${row.item.bvid}` as any);
-              }
-            }}
+            onPress={() => router.push(`/video/${row.item.bvid}` as any)}
           />
+        );
+      }
+      if (row.type === "live") {
+        return (
+          <View style={styles.row}>
+            <View style={styles.leftCol}>
+              <LiveCard
+                item={row.left}
+                onPress={() => Linking.openURL(`https://live.bilibili.com/${row.left.roomid}`)}
+              />
+            </View>
+            {row.right && (
+              <View style={styles.rightCol}>
+                <LiveCard
+                  item={row.right}
+                  onPress={() => Linking.openURL(`https://live.bilibili.com/${row.right!.roomid}`)}
+                />
+              </View>
+            )}
+          </View>
         );
       }
       const right = row.right;
@@ -260,6 +274,8 @@ export default function HomeScreen() {
           keyExtractor={(row: any) =>
             row.type === "big"
               ? `big-${row.item.bvid}`
+              : row.type === "live"
+              ? `live-${row.left.roomid}-${row.right?.roomid ?? "empty"}`
               : `pair-${row.left.bvid}-${row.right?.bvid ?? "empty"}`
           }
           contentContainerStyle={{
@@ -387,9 +403,9 @@ export default function HomeScreen() {
                 />
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerBtn}>
+            {/* <TouchableOpacity style={styles.headerBtn}>
               <Ionicons name="search" size={22} color="#212121" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <Text style={styles.logo}>哔哩哔哩</Text>
         </Animated.View>

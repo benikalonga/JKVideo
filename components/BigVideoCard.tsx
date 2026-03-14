@@ -16,7 +16,6 @@ import { buildDashMpdUri } from "../utils/dash";
 import { getPlayUrl, getVideoDetail } from "../services/bilibili";
 import { proxyImageUrl } from "../utils/imageUrl";
 import { formatCount, formatDuration } from "../utils/format";
-import { LivePulse } from "./LivePulse";
 import type { VideoItem } from "../services/types";
 
 const HEADERS = {
@@ -75,11 +74,8 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
     thumbOpacity.setValue(1);
   }, [item.bvid]);
 
-  const isLive = item.goto === 'live';
-
   // Fetch play URL when visible for the first time
   useEffect(() => {
-    if (isLive) return;
     if (!isVisible || videoUrl) return;
     let cancelled = false;
     (async () => {
@@ -220,10 +216,8 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
           />
         </Animated.View>
 
-        {/* Swipe gesture layer (video only) */}
-        {!isLive && (
-          <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
-        )}
+        {/* Swipe gesture layer */}
+        <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
         {/* Seek time label */}
         {seekLabel && (
@@ -232,29 +226,18 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
           </View>
         )}
 
-        {/* Live badge */}
-        {isLive && (
-          <View style={styles.liveBadge}>
-            <LivePulse />
-            <Text style={styles.liveBadgeText}>直播中</Text>
-          </View>
-        )}
-
         <View style={styles.meta}>
-          <Ionicons name={isLive ? "people" : "play"} size={11} color="#fff" />
+          <Ionicons name="play" size={11} color="#fff" />
           <Text style={styles.metaText}>
-            {formatCount(isLive ? (item.online ?? 0) : (item.stat?.view ?? 0))}
+            {formatCount(item.stat?.view ?? 0)}
           </Text>
         </View>
 
-        {/* Duration badge on thumbnail (video only) */}
-        {!isLive && (
-          <View style={styles.durationBadge}>
-            <Text style={styles.durationText}>
-              {formatDuration(item.duration)}
-            </Text>
-          </View>
-        )}
+        <View style={styles.durationBadge}>
+          <Text style={styles.durationText}>
+            {formatDuration(item.duration)}
+          </Text>
+        </View>
 
         {/* Mute toggle — visible only when video is playing */}
         {videoUrl && !paused && (
@@ -272,8 +255,8 @@ export function BigVideoCard({ item, isVisible, onPress }: Props) {
         )}
       </View>
 
-      {/* Progress bar between video and info (video only) */}
-      {!isLive && videoUrl && duration > 0 && (
+      {/* Progress bar between video and info */}
+      {videoUrl && duration > 0 && (
         <View style={styles.progressTrack}>
           <View
             style={[
@@ -312,20 +295,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: "hidden",
   },
-  liveBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 5,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    zIndex: 2,
-  },
-  liveBadgeText: { color: "#fff", fontSize: 10, fontWeight: "400" },
   durationBadge: {
     position: "absolute",
     bottom: 4,

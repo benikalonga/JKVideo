@@ -8,10 +8,10 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LivePulse } from "./LivePulse";
 import type { LiveRoom } from "../services/types";
 import { formatCount } from "../utils/format";
 import { proxyImageUrl } from "../utils/imageUrl";
-import { LivePulse } from "./LivePulse";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 14) / 2;
