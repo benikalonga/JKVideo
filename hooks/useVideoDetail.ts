@@ -37,7 +37,7 @@ export function useVideoDetail(bvid: string) {
         setLoading(true);
         const detail = await getVideoDetail(bvid);
         setVideo(detail);
-        const cid = detail.pages?.[0]?.cid ?? detail.cid;
+        const cid = detail.pages?.[0]?.cid ?? detail.cid as number;
         cidRef.current = cid;
         await fetchPlayData(cid, 120, true);
       } catch (e: any) {
