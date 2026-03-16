@@ -94,6 +94,7 @@ export async function getRecommendFeed(freshIdx = 0): Promise<VideoItem[]> {
   );
   const res = await api.get('/x/web-interface/wbi/index/top/feed/rcmd', { params: signed });
   const items: any[] = res.data.data?.item ?? [];
+  console.log(items,'items')
   return items
     .filter(item => item.goto === 'av' && item.bvid && item.title)
     .map(item => ({
@@ -129,11 +130,26 @@ export async function getUserInfo(): Promise<{ face: string; uname: string; mid:
   return { face: face ?? '', uname: uname ?? '', mid: mid ?? 0 };
 }
 
-export async function getComments(aid: number, pn = 1): Promise<Comment[]> {
-  const res = await api.get('/x/v2/reply', {
-    params: { oid: aid, type: 1, pn, ps: 20, sort: 2 },
+export async function getComments(
+  aid: number,
+  cursor = '',
+  sort = 2,
+): Promise<{ replies: Comment[]; nextCursor: string; isEnd: boolean }> {
+  const mode = sort === 2 ? 3 : 2; // 3=hot, 2=time
+  const res = await api.get('/x/v2/reply/main', {
+    params: {
+      oid: aid,
+      type: 1,
+      mode,
+      plat: 1,
+      pagination_str: JSON.stringify({ offset: cursor }),
+    },
   });
-  return (res.data.data?.replies ?? []) as Comment[];
+  const data = res.data.data;
+  const replies = (data?.replies ?? []) as Comment[];
+  const nextCursor: string = data?.cursor?.next ?? '';
+  const isEnd: boolean = data?.cursor?.is_end ?? true;
+  return { replies, nextCursor, isEnd };
 }
 
 export async function getVideoShot(bvid: string, cid: number): Promise<VideoShotData | null> {

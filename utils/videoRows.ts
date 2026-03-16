@@ -53,8 +53,8 @@ export function toListRows(pages: VideoItem[][], liveRooms?: LiveRoom[]): ListRo
       roomIdx++;
     }
 
-    rows.push(...pairs);
     rows.push({ type: 'big', item: bigItem });
+    rows.push(...pairs);
   }
   return rows;
 }

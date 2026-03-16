@@ -24,6 +24,21 @@ export interface VideoItem {
   roomid?: number;
   online?: number;
   area_name?: string;
+  ugc_season?: {
+    id: number;
+    title: string;
+    cover: string;
+    ep_count: number;
+    sections: Array<{
+      episodes: Array<{
+        aid: number;
+        bvid: string;
+        cid: number;
+        title: string;
+        arc?: { pic: string; stat?: { view: number } };
+      }>;
+    }>;
+  };
 }
 
 export interface Comment {

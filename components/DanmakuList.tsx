@@ -18,6 +18,7 @@ interface Props {
   currentTime: number;
   visible: boolean;
   onToggle: () => void;
+  style?: object;
 }
 
 interface DisplayedDanmaku extends DanmakuItem {
@@ -37,7 +38,7 @@ function formatTimestamp(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function DanmakuList({ danmakus, currentTime, visible, onToggle }: Props) {
+export default function DanmakuList({ danmakus, currentTime, visible, onToggle, style }: Props) {
   const flatListRef = useRef<FlatList>(null);
   const [displayedItems, setDisplayedItems] = useState<DisplayedDanmaku[]>([]);
   const [unseenCount, setUnseenCount] = useState(0);
@@ -179,7 +180,7 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle }
   const keyExtractor = useCallback((item: DisplayedDanmaku) => String(item._key), []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <TouchableOpacity style={styles.header} onPress={onToggle} activeOpacity={0.7}>
         <Ionicons
           name={visible ? 'chatbubbles' : 'chatbubbles-outline'}
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   listWrapper: {
-    height: 200,
+    flex: 1,
     position: 'relative',
   },
   list: {

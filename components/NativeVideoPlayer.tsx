@@ -40,6 +40,17 @@ function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+// index[i] = timestamp (seconds) for frame i. Returns frame number (position i), not index value.
+function findFrameByTime(index: number[], seekTime: number): number {
+  let lo = 0, hi = index.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (index[mid] <= seekTime) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
 
 interface Props {
   playData: PlayUrlResponse | null;
@@ -129,7 +140,7 @@ export function NativeVideoPlayer({
       if (cancelled) return;
       if (shotData?.image?.length) {
         setShots(shotData);
-        console.log(shotData.index,'缩略图长度')
+        console.log(shotData.index,shotData.image,'缩略图长度')
       }
     });
     return () => {
@@ -263,14 +274,17 @@ export function NativeVideoPlayer({
     const framesPerSheet = img_x_len * img_y_len;
     const totalFrames = framesPerSheet * image.length;
     const seekTime = touchRatio * duration;
+    // index[i] = timestamp of frame i (seconds). Binary search returns position i (= frame number).
+    // Cap to index.length-1 to avoid black padding frames beyond valid content.
     const frameIdx = index?.length && duration > 0
-      ? clamp(index[clamp(Math.floor(seekTime / duration * index.length), 0, index.length - 1)], 0, totalFrames - 1)
+      ? clamp(findFrameByTime(index, seekTime), 0, index.length - 1)
       : clamp(Math.floor(touchRatio * (totalFrames - 1)), 0, totalFrames - 1);
 
     const sheetIdx = Math.floor(frameIdx / framesPerSheet);
     const local = frameIdx % framesPerSheet;
     const col = local % img_x_len;
     const row = Math.floor(local / img_x_len);
+    
     console.log('[thumb]', { seekTime, duration, indexLen: index?.length, frameIdx, totalFrames, sheetIdx, col, row });
 
     // Scale sprite frame to display size
