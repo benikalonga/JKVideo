@@ -86,6 +86,8 @@ function NativeLivePlayer({
   const [buffering, setBuffering] = useState(true);
   const [showQualityPanel, setShowQualityPanel] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRef = useRef<any>(null);
+  const currentTimeRef = useRef(0);
 
   const resetHideTimer = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -137,8 +139,10 @@ function NativeLivePlayer({
     });
   }, [resetHideTimer]);
 
+  const fsW = Math.max(screenW, screenH);
+  const fsH = Math.min(screenW, screenH);
   const containerStyle = isFullscreen
-    ? { width: screenH, height: screenW }
+    ? { width: fsW, height: fsH }
     : { width: screenW, height: videoH };
 
   const currentQnDesc = qualities.find(q => q.qn === currentQn)?.desc ?? '';
@@ -146,14 +150,21 @@ function NativeLivePlayer({
   const videoContent = (
     <View style={[styles.container, containerStyle]}>
       <Video
-        key={hlsUrl}
+        key={hlsUrl + (isFullscreen ? '_fs' : '_normal')}
+        ref={videoRef}
         source={{ uri: hlsUrl, headers: HEADERS }}
         style={StyleSheet.absoluteFill}
         resizeMode="contain"
         controls={false}
         paused={paused}
+        onProgress={({ currentTime: ct }: { currentTime: number }) => { currentTimeRef.current = ct; }}
         onBuffer={({ isBuffering }: { isBuffering: boolean }) => setBuffering(isBuffering)}
-        onLoad={() => setBuffering(false)}
+        onLoad={() => {
+          setBuffering(false);
+          if (currentTimeRef.current > 0) {
+            videoRef.current?.seek(currentTimeRef.current);
+          }
+        }}
       />
 
       {buffering && (
@@ -245,7 +256,7 @@ function NativeLivePlayer({
 
   if (isFullscreen) {
     return (
-      <Modal visible transparent animationType="fade" supportedOrientations={['landscape']}>
+      <Modal visible transparent animationType="fade" supportedOrientations={['landscape']} onRequestClose={() => setIsFullscreen(false)}>
         <View style={styles.fsModal}>{videoContent}</View>
       </Modal>
     );

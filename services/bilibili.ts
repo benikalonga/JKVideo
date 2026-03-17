@@ -278,7 +278,7 @@ export async function getLiveStreamUrl(roomId: number, qn = 10000): Promise<Live
       const codec = fmt?.codec?.find((c: any) => c.codec_name === 'avc') ?? fmt?.codec?.[0];
       const urlInfo = codec?.url_info?.[0];
       if (urlInfo) {
-        hlsUrl = urlInfo.host + codec.base_url;
+        hlsUrl = urlInfo.host + codec.base_url + (urlInfo.extra ?? '');
         currentQn = codec.current_qn ?? 0;
       }
     }
@@ -289,7 +289,7 @@ export async function getLiveStreamUrl(roomId: number, qn = 10000): Promise<Live
       const codec = fmt?.codec?.find((c: any) => c.codec_name === 'avc') ?? fmt?.codec?.[0];
       const urlInfo = codec?.url_info?.[0];
       if (urlInfo) {
-        flvUrl = urlInfo.host + codec.base_url;
+        flvUrl = urlInfo.host + codec.base_url + (urlInfo.extra ?? '');
       }
     }
 

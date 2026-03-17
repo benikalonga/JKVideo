@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, Platform, Modal, StatusBar, useWindowDimensions
 // expo-screen-orientation requires a dev build; gracefully degrade in Expo Go
 let ScreenOrientation: typeof import('expo-screen-orientation') | null = null;
 try { ScreenOrientation = require('expo-screen-orientation'); } catch {}
-import { NativeVideoPlayer } from './NativeVideoPlayer';
+import { NativeVideoPlayer, type NativeVideoPlayerRef } from './NativeVideoPlayer';
 import type { PlayUrlResponse, DanmakuItem } from '../services/types';
 
 interface Props {
@@ -25,6 +25,7 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, o
   // In Expo Go ScreenOrientation is unavailable; simulate landscape via CSS transform
   const needsRotation = !ScreenOrientation && fullscreen;
   const lastTimeRef = useRef(0);
+  const portraitRef = useRef<NativeVideoPlayerRef>(null);
 
   const handleEnterFullscreen = async () => {
     if (Platform.OS !== 'web')
@@ -33,6 +34,8 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, o
   };
 
   const handleExitFullscreen = async () => {
+    // Seek portrait player to current position before it becomes visible again
+    portraitRef.current?.seek(lastTimeRef.current);
     setFullscreen(false);
     if (Platform.OS !== 'web')
       await ScreenOrientation?.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
@@ -69,21 +72,22 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, o
 
   return (
     <>
-      {/* Portrait player: unmount when fullscreen */}
-      {!fullscreen && (
-        <NativeVideoPlayer
-          playData={playData}
-          qualities={qualities}
-          currentQn={currentQn}
-          onQualityChange={onQualityChange}
-          onFullscreen={handleEnterFullscreen}
-          onMiniPlayer={onMiniPlayer}
-          bvid={bvid}
-          cid={cid}
-          isFullscreen={false}
-          onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
-        />
-      )}
+      {/* Portrait player: always mounted, force-paused while fullscreen is active */}
+      <NativeVideoPlayer
+        ref={portraitRef}
+        playData={playData}
+        qualities={qualities}
+        currentQn={currentQn}
+        onQualityChange={onQualityChange}
+        onFullscreen={handleEnterFullscreen}
+        onMiniPlayer={onMiniPlayer}
+        bvid={bvid}
+        cid={cid}
+        isFullscreen={false}
+        forcePaused={fullscreen}
+        initialTime={lastTimeRef.current}
+        onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
+      />
 
       <Modal visible={fullscreen} animationType="none" statusBarTranslucent>
         <StatusBar hidden />

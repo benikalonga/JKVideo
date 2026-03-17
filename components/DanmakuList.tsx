@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,19 @@ import {
   Animated,
   NativeSyntheticEvent,
   NativeScrollEvent,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { DanmakuItem } from '../services/types';
-import { danmakuColorToCss } from '../utils/danmaku';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { DanmakuItem } from "../services/types";
+import { danmakuColorToCss } from "../utils/danmaku";
 
 interface Props {
   danmakus: DanmakuItem[];
   currentTime: number;
   visible: boolean;
   onToggle: () => void;
-  style?: object;
+  style?: object | object[];
+  hideHeader?: boolean;
+  maxItems?: number;
 }
 
 interface DisplayedDanmaku extends DanmakuItem {
@@ -35,10 +37,18 @@ const SEEK_THRESHOLD = 2;
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function DanmakuList({ danmakus, currentTime, visible, onToggle, style }: Props) {
+export default function DanmakuList({
+  danmakus,
+  currentTime,
+  visible,
+  onToggle,
+  style,
+  hideHeader,
+  maxItems = 100,
+}: Props) {
   const flatListRef = useRef<FlatList>(null);
   const [displayedItems, setDisplayedItems] = useState<DisplayedDanmaku[]>([]);
   const [unseenCount, setUnseenCount] = useState(0);
@@ -79,12 +89,12 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle, 
       isAtBottomRef.current = true;
 
       // Re-enqueue danmakus up to current time
-      const catchUp = danmakus.filter(d => d.time <= currentTime);
+      const catchUp = danmakus.filter((d) => d.time <= currentTime);
       // Only enqueue recent ones to avoid flooding
       const tail = catchUp.slice(-20);
       queueRef.current = tail;
       processedIndexRef.current = danmakus.findIndex(
-        d => d.time > currentTime
+        (d) => d.time > currentTime,
       );
       if (processedIndexRef.current === -1) {
         processedIndexRef.current = danmakus.length;
@@ -106,37 +116,45 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle, 
   useEffect(() => {
     if (!visible) return;
 
-    const id = setInterval(() => {
-      if (queueRef.current.length === 0) return;
+    const id = setInterval(
+      () => {
+        if (queueRef.current.length === 0) return;
 
-      const item = queueRef.current.shift()!;
-      const fadeAnim = new Animated.Value(0);
-      const displayed: DisplayedDanmaku = {
-        ...item,
-        _key: keyCounterRef.current++,
-        _fadeAnim: fadeAnim,
-      };
+        const item = queueRef.current.shift()!;
+        const fadeAnim = new Animated.Value(0);
+        const displayed: DisplayedDanmaku = {
+          ...item,
+          _key: keyCounterRef.current++,
+          _fadeAnim: fadeAnim,
+        };
 
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
 
-      setDisplayedItems(prev => {
-        const next = [...prev, displayed];
-        return next.length > MAX_DISPLAYED ? next.slice(-MAX_DISPLAYED) : next;
-      });
-
-      if (isAtBottomRef.current) {
-        // Auto-scroll on next frame
-        requestAnimationFrame(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
+        setDisplayedItems((prev) => {
+          const next = [...prev, displayed];
+          // 超出上限时批量裁剪到一半，减少频繁截断导致的抖动
+          return next.length > maxItems
+            ? next.slice(-Math.floor(maxItems / 2))
+            : next;
         });
-      } else {
-        setUnseenCount(c => c + 1);
-      }
-    }, queueRef.current.length > QUEUE_FAST_THRESHOLD ? FAST_DRIP_INTERVAL : DRIP_INTERVAL);
+
+        if (isAtBottomRef.current) {
+          // Auto-scroll on next frame
+          requestAnimationFrame(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          });
+        } else {
+          setUnseenCount((c) => c + 1);
+        }
+      },
+      queueRef.current.length > QUEUE_FAST_THRESHOLD
+        ? FAST_DRIP_INTERVAL
+        : DRIP_INTERVAL,
+    );
 
     return () => clearInterval(id);
   }, [visible]);
@@ -151,7 +169,7 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle, 
         setUnseenCount(0);
       }
     },
-    []
+    [],
   );
 
   const handleScrollBeginDrag = useCallback(() => {
@@ -168,34 +186,79 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle, 
     const dotColor = danmakuColorToCss(item.color);
     return (
       <Animated.View style={[styles.bubble, { opacity: item._fadeAnim }]}>
-        <View style={[styles.colorDot, { backgroundColor: dotColor }]} />
-        <Text style={styles.bubbleText} numberOfLines={3}>
-          {item.text}
-        </Text>
-        <Text style={styles.timestamp}>{formatTimestamp(item.time)}</Text>
+        {!hideHeader && (
+          <View style={[styles.colorDot, { backgroundColor: dotColor }]} />
+        )}
+        <View style={styles.bubbleContent}>
+          {item.uname && (
+            <View style={styles.userRow}>
+              {item.isAdmin && (
+                <View style={[styles.badge, styles.badgeAdmin]}>
+                  <Text style={styles.badgeText}>房管</Text>
+                </View>
+              )}
+              {item.guardLevel === 1 && (
+                <View style={[styles.badge, styles.badgeGuard1]}>
+                  <Text style={styles.badgeText}>总督</Text>
+                </View>
+              )}
+              {item.guardLevel === 2 && (
+                <View style={[styles.badge, styles.badgeGuard2]}>
+                  <Text style={styles.badgeText}>提督</Text>
+                </View>
+              )}
+              {item.guardLevel === 3 && (
+                <View style={[styles.badge, styles.badgeGuard3]}>
+                  <Text style={styles.badgeText}>舰长</Text>
+                </View>
+              )}
+              {item.medalLevel != null && (
+                <View style={styles.medal}>
+                  <Text style={styles.medalText}>{item.medalName} {item.medalLevel}</Text>
+                </View>
+              )}
+              <Text style={styles.uname}>{item.uname}</Text>
+            </View>
+          )}
+          <Text style={styles.bubbleText} numberOfLines={3}>
+            {item.text}
+          </Text>
+        </View>
+        {!hideHeader && (
+          <Text style={styles.timestamp}>{formatTimestamp(item.time)}</Text>
+        )}
       </Animated.View>
     );
-  }, []);
+  }, [hideHeader]);
 
-  const keyExtractor = useCallback((item: DisplayedDanmaku) => String(item._key), []);
+  const keyExtractor = useCallback(
+    (item: DisplayedDanmaku) => String(item._key),
+    [],
+  );
 
   return (
     <View style={[styles.container, style]}>
-      <TouchableOpacity style={styles.header} onPress={onToggle} activeOpacity={0.7}>
-        <Ionicons
-          name={visible ? 'chatbubbles' : 'chatbubbles-outline'}
-          size={16}
-          color="#00AEEC"
-        />
-        <Text style={styles.headerText}>
-          弹幕 {danmakus.length > 0 ? `(${danmakus.length})` : ''}
-        </Text>
-        <Ionicons
-          name={visible ? 'chevron-up' : 'chevron-down'}
-          size={14}
-          color="#999"
-        />
-      </TouchableOpacity>
+      {!hideHeader && (
+        <TouchableOpacity
+          style={styles.header}
+          onPress={onToggle}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={visible ? "chatbubbles" : "chatbubbles-outline"}
+            size={16}
+            color="#00AEEC"
+          />
+          <Text style={styles.headerText}>
+            弹幕 {danmakus.length > 0 ? `(${danmakus.length})` : ""}
+          </Text>
+          <Ionicons
+            name={visible ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#999"
+          />
+        </TouchableOpacity>
+      )}
 
       {visible && (
         <View style={styles.listWrapper}>
@@ -212,7 +275,7 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle, 
             removeClippedSubviews={true}
             ListEmptyComponent={
               <Text style={styles.empty}>
-                {danmakus.length === 0 ? '暂无弹幕' : '弹幕将随视频播放显示'}
+                {danmakus.length === 0 ? "暂无弹幕" : "弹幕将随视频播放显示"}
               </Text>
             }
           />
@@ -233,13 +296,13 @@ export default function DanmakuList({ danmakus, currentTime, visible, onToggle, 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
+    borderTopColor: "#eee",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 6,
@@ -247,25 +310,25 @@ const styles = StyleSheet.create({
   headerText: {
     flex: 1,
     fontSize: 13,
-    color: '#212121',
-    fontWeight: '500',
+    color: "#212121",
+    fontWeight: "500",
   },
   listWrapper: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   list: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
   },
   listContent: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   bubble: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#f8f8f8',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#f8f8f8",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -279,36 +342,63 @@ const styles = StyleSheet.create({
     marginTop: 6,
     flexShrink: 0,
   },
-  bubbleText: {
+  bubbleContent: {
     flex: 1,
+  },
+  userRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 4,
+    marginBottom: 2,
+  },
+  badge: {
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  badgeAdmin: { backgroundColor: "#e53935" },
+  badgeGuard1: { backgroundColor: "#9c27b0" },
+  badgeGuard2: { backgroundColor: "#1565c0" },
+  badgeGuard3: { backgroundColor: "#1976d2" },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "600" },
+  medal: {
+    borderRadius: 3,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    backgroundColor: "#ff6d9d",
+  },
+  medalText: { color: "#fff", fontSize: 10, fontWeight: "600" },
+  uname: { fontSize: 11, color: "#999" },
+  bubbleText: {
     fontSize: 13,
-    color: '#333',
+    color: "#333",
     lineHeight: 18,
   },
   timestamp: {
     fontSize: 11,
-    color: '#bbb',
+    color: "#bbb",
     marginTop: 1,
     flexShrink: 0,
   },
   pill: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 8,
-    alignSelf: 'center',
-    backgroundColor: '#00AEEC',
+    alignSelf: "center",
+    backgroundColor: "#00AEEC",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   pillText: {
     fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
   empty: {
     fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
     paddingVertical: 20,
   },
 });

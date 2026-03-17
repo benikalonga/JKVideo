@@ -117,6 +117,11 @@ export interface DanmakuItem {
   fontSize: number;
   color: number;      // 0xRRGGBB 十进制整数
   text: string;
+  uname?: string;
+  isAdmin?: boolean;
+  guardLevel?: number;  // 0=无, 1=总督, 2=提督, 3=舰长
+  medalLevel?: number;
+  medalName?: string;
 }
 
 export interface LiveRoom {

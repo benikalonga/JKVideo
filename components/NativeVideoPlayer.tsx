@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { formatDuration } from "../utils/format";
 import {
   View,
@@ -51,6 +51,10 @@ function findFrameByTime(index: number[], seekTime: number): number {
   return lo;
 }
 
+export interface NativeVideoPlayerRef {
+  seek: (t: number) => void;
+}
+
 interface Props {
   playData: PlayUrlResponse | null;
   qualities: { qn: number; desc: string }[];
@@ -65,9 +69,10 @@ interface Props {
   isFullscreen?: boolean;
   onTimeUpdate?: (t: number) => void;
   initialTime?: number;
+  forcePaused?: boolean;
 }
 
-export function NativeVideoPlayer({
+export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(function NativeVideoPlayer({
   playData,
   qualities,
   currentQn,
@@ -81,7 +86,8 @@ export function NativeVideoPlayer({
   isFullscreen,
   onTimeUpdate,
   initialTime,
-}: Props) {
+  forcePaused,
+}: Props, ref) {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const VIDEO_H = SCREEN_W * 0.5625;
 
@@ -112,6 +118,11 @@ export function NativeVideoPlayer({
   const [showDanmaku, setShowDanmaku] = useState(true);
 
   const videoRef = useRef<VideoRef>(null);
+
+  useImperativeHandle(ref, () => ({
+    seek: (t: number) => { videoRef.current?.seek(t); },
+  }));
+
   const currentDesc =
     qualities.find((q) => q.qn === currentQn)?.desc ??
     String(currentQn || "HD");
@@ -352,7 +363,7 @@ export function NativeVideoPlayer({
           style={StyleSheet.absoluteFill}
           resizeMode="contain"
           controls={false}
-          paused={paused}
+          paused={!!(forcePaused || paused)}
           onProgress={({
             currentTime: ct,
             seekableDuration: dur,
@@ -553,7 +564,7 @@ export function NativeVideoPlayer({
       </Modal>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#000" },

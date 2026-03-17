@@ -28,9 +28,9 @@ function buildPacket(body: string, op: number): Uint8Array {
   // ver = 1
   pkt[6] = 0x00; pkt[7] = 0x01;
   // op (big-endian uint32)
-  pkt[8]  = (op >>> 24) & 0xff;
-  pkt[9]  = (op >>> 16) & 0xff;
-  pkt[10] = (op >>> 8)  & 0xff;
+  pkt[8] = (op >>> 24) & 0xff;
+  pkt[9] = (op >>> 16) & 0xff;
+  pkt[10] = (op >>> 8) & 0xff;
   pkt[11] = op & 0xff;
   // seq = 1
   pkt[12] = 0x00; pkt[13] = 0x00; pkt[14] = 0x00; pkt[15] = 0x01;
@@ -78,7 +78,12 @@ function extractDanmaku(buf: Uint8Array): DanmakuItem[] {
           const text = info[1] as string;
           // color is at info[0][2] (decimal 0xRRGGBB)
           const color = (info[0]?.[2] as number) ?? 0xffffff;
-          result.push({ time: 0, mode: 1, fontSize: 25, color, text });
+          const uname = info[2]?.[1] as string | undefined;
+          const isAdmin = info[2]?.[2] === 1;
+          const guardLevel = (info[7] as number) ?? 0;
+          const medalLevel = Array.isArray(info[3]) && info[3].length > 0 ? info[3][0] as number : undefined;
+          const medalName = Array.isArray(info[3]) && info[3].length > 1 ? info[3][1] as string : undefined;
+          result.push({ time: 0, mode: 1, fontSize: 25, color, text, uname, isAdmin, guardLevel, medalLevel, medalName });
         }
       } catch { /* ignore parse errors */ }
     }
@@ -118,7 +123,6 @@ export function useLiveDanmaku(roomId: number): DanmakuItem[] {
         const info = await getLiveDanmakuInfo(roomId);
         token = info.token;
         host = info.host;
-        console.log('[danmaku] getDanmuInfo ok, host:', host, 'token:', token.slice(0, 10) + '...');
       } catch (e) {
         console.warn('[danmaku] getDanmuInfo failed:', e);
       }
@@ -133,7 +137,6 @@ export function useLiveDanmaku(roomId: number): DanmakuItem[] {
       const cookieParts = buvid3 ? [`buvid3=${buvid3}`] : [];
       if (sessdata) cookieParts.push(`SESSDATA=${sessdata}`);
 
-      console.log('[danmaku] connecting to', host, 'cookie len:', cookieParts.join('; ').length);
       // React Native supports non-standard options.headers in the WebSocket constructor
       const ws = new (WebSocket as any)(host, [], {
         headers: cookieParts.length ? { Cookie: cookieParts.join('; ') } : {},
@@ -152,12 +155,9 @@ export function useLiveDanmaku(roomId: number): DanmakuItem[] {
         const authPkt = buildPacket(authBody, 7);
         const hdr = Array.from(authPkt.slice(0, 16))
           .map(b => b.toString(16).padStart(2, '0')).join(' ');
-        console.log('[danmaku] auth header hex:', hdr);
-        console.log('[danmaku] auth body len:', authPkt.length - 16);
         // Send as ArrayBuffer (more reliable than Uint8Array in some RN/Hermes versions)
         const t0 = Date.now();
         ws.send(authPkt.buffer as ArrayBuffer);
-        console.log('[danmaku] send done, readyState:', ws.readyState, 'at', t0);
 
         heartbeatRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send(buildPacket('', 2));
@@ -173,10 +173,8 @@ export function useLiveDanmaku(roomId: number): DanmakuItem[] {
 
       ws.onerror = (e: Event) => {
         const ws2 = (e as any).currentTarget as WebSocket;
-        console.warn('[danmaku] ws error, readyState:', ws2?.readyState, 'url:', ws2?.url);
       };
       ws.onclose = (e: CloseEvent) => {
-        console.log('[danmaku] ws closed, code:', e.code, 'reason:', e.reason, 'wasClean:', e.wasClean);
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       };
     }
