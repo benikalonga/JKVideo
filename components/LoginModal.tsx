@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   Alert,
+  Linking,
 } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
@@ -108,7 +109,13 @@ export function LoginModal({ visible, onClose }: Props) {
       const dest = `${FileSystem.cacheDirectory}bilibili_qr.png`;
       const { uri } = await FileSystem.downloadAsync(qrUrl, dest);
       await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert("已保存", "二维码已存入相册");
+      Alert.alert("已保存", "二维码已存入相册，请用哔哩哔哩扫码登录", [
+        { text: "关闭", style: "cancel" },
+        {
+          text: "打开哔哩哔哩扫一扫",
+          onPress: () => Linking.openURL("bilibili://scan"),
+        },
+      ]);
     } catch {
       Alert.alert("失败", "保存失败，请重试");
     } finally {
