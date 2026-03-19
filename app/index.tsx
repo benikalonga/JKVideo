@@ -301,11 +301,11 @@ export default function HomeScreen() {
             ref={hotListRef as any}
             style={styles.listContainer}
             data={rows}
-            keyExtractor={(row: any) =>
+            keyExtractor={(row: any, index: number) =>
               row.type === "big"
                 ? `big-${row.item.bvid}`
                 : row.type === "live"
-                  ? `live-${row.left.roomid}-${row.right?.roomid ?? "empty"}`
+                  ? `live-${index}-${row.left.roomid}-${row.right?.roomid ?? "empty"}`
                   : `pair-${row.left.bvid}-${row.right?.bvid ?? "empty"}`
             }
             contentContainerStyle={{

@@ -41,10 +41,8 @@ export function LanShareModal({ visible, task, onClose }: Props) {
     setVideoUrl(null);
     setQrImageLoaded(false);
     setLoading(true);
-    console.log(123123,'baseUrlbaseUrl')
     startLanServer()
     .then((baseUrl) => {
-        console.log(baseUrl,'baseUrl')
         setVideoUrl(buildVideoUrl(baseUrl, task.bvid, task.qn));
       })
       .catch(() => setVideoUrl(null))

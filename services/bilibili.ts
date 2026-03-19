@@ -432,7 +432,7 @@ export async function getFollowedLiveRooms(): Promise<LiveRoom[]> {
   });
   const list = res.data?.data?.list ?? [];
   return list.map((r: any) => ({
-    roomid: r.room_id,
+    roomid: r.room_id ?? r.roomid,
     uid: r.uid,
     title: r.title,
     uname: r.uname,
