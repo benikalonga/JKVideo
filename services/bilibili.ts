@@ -116,8 +116,10 @@ export async function getVideoDetail(bvid: string): Promise<VideoItem> {
 
 export async function getPlayUrl(bvid: string, cid: number, qn = 64): Promise<PlayUrlResponse> {
   const isAndroid = Platform.OS === 'android';
+  // 1488 = 16(DASH)|64(HDR)|128(4K)|256(杜比全景声)|1024(杜比视界)
+  const FNVAL_ANDROID = 16 | 64 | 128 | 256 | 1024;
   const params = isAndroid
-    ? { bvid, cid, qn, fnval: 16, fourk: 1 }
+    ? { bvid, cid, qn, fnval: FNVAL_ANDROID, fourk: 1 }
     : { bvid, cid, qn, fnval: 0, platform: 'html5', fourk: 1 };
   const res = await api.get('/x/player/playurl', { params });
   return res.data.data as PlayUrlResponse;

@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import type { PlayUrlResponse } from '../services/types';
+import type { PlayUrlResponse, DashAudioItem } from '../services/types';
 
 /**
  * 将 Bilibili DASH 响应写成 MPD 文件，返回 file:// URI 供 ExoPlayer 播放。
@@ -12,13 +12,20 @@ export async function buildDashMpdUri(playData: PlayUrlResponse, qn: number): Pr
   return path;
 }
 
+function isDolbyVision(codecs: string): boolean {
+  return /^(dvhe|dvh1)/.test(codecs);
+}
+
 function buildMpdXml(playData: PlayUrlResponse, qn: number): string {
   const dash = playData.dash!;
 
   const video = dash.video.find(v => v.id === qn) ?? dash.video[0];
-  const audio = dash.audio.reduce((best, a) =>
-    a.bandwidth > best.bandwidth ? a : best
-  );
+
+  // 优先使用杜比全景声音轨，回退到带宽最高的普通音轨
+  const dolbyAudios = playData.dolby?.audio;
+  const audio: DashAudioItem = (dolbyAudios && dolbyAudios.length > 0)
+    ? dolbyAudios.reduce((best, a) => a.bandwidth > best.bandwidth ? a : best)
+    : dash.audio.reduce((best, a) => a.bandwidth > best.bandwidth ? a : best);
 
   const dur = dash.duration;
   const vSeg = video.segment_base;
@@ -31,13 +38,18 @@ function buildMpdXml(playData: PlayUrlResponse, qn: number): string {
     ? `\n        <SegmentBase indexRange="${aSeg.index_range}"><Initialization range="${aSeg.initialization}"/></SegmentBase>`
     : '';
 
+  const isDV = isDolbyVision(video.codecs);
+  const dvProperty = isDV
+    ? `\n      <SupplementalProperty schemeIdUri="tag:dolby.com,2016:dash:dolby_vision_profile:2014" value="${video.codecs}"/>`
+    : '';
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011"
-     profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"
+     profiles="urn:mpeg:dash:profile:isoff-on-demand:2011,http://dashif.org/guidelines/dash-if-simple"
      type="static"
      mediaPresentationDuration="PT${dur}S">
   <Period duration="PT${dur}S">
-    <AdaptationSet id="1" mimeType="${video.mimeType}" codecs="${video.codecs}" startWithSAP="1" subsegmentAlignment="true">
+    <AdaptationSet id="1" mimeType="${video.mimeType}" codecs="${video.codecs}" startWithSAP="1" subsegmentAlignment="true">${dvProperty}
       <Representation id="v1" bandwidth="${video.bandwidth}" width="${video.width}" height="${video.height}" frameRate="${video.frameRate}">
         <BaseURL>${escapeXml(video.baseUrl)}</BaseURL>${videoSegmentBase}
       </Representation>

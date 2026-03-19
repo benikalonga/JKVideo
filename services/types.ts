@@ -69,6 +69,8 @@ export interface DashVideoItem {
   stat:any;
   frameRate: string;
   segment_base?: DashSegmentBase;
+  dolby_type?: number;  // 1=杜比视界
+  hdr_type?: number;    // 1=HDR
 }
 
 export interface DashAudioItem {
@@ -90,6 +92,10 @@ export interface PlayUrlResponse {
     duration: number;
     video: DashVideoItem[];
     audio: DashAudioItem[];
+  };
+  dolby?: {
+    type: number;          // 1=杜比全景声
+    audio?: DashAudioItem[];
   };
   quality: number;
   accept_quality: number[];

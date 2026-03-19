@@ -407,6 +407,14 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                 videoRef.current?.seek(initialTime);
               }
             }}
+            onError={(e) => {
+              // 杜比视界播放失败时自动降级到 1080P
+              if (currentQn === 126) {
+                onQualityChange(80);
+                return;
+              }
+              console.warn('Video playback error:', e);
+            }}
           />
         ) : (
           <View style={styles.placeholder} />
@@ -572,7 +580,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                       q.qn === currentQn && styles.qualityItemActive,
                     ]}
                   >
-                    {q.desc}
+                    {q.desc}{q.qn === 126 ? ' DV' : ''}
                   </Text>
                   {q.qn === currentQn && (
                     <Ionicons name="checkmark" size={16} color="#00AEEC" />

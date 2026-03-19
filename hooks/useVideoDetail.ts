@@ -39,7 +39,7 @@ export function useVideoDetail(bvid: string) {
         setVideo(detail);
         const cid = detail.pages?.[0]?.cid ?? detail.cid as number;
         cidRef.current = cid;
-        await fetchPlayData(cid, 120, true);
+        await fetchPlayData(cid, 126, true);
       } catch (e: any) {
         setError(e.message ?? 'Load failed');
       } finally {
@@ -52,7 +52,7 @@ export function useVideoDetail(bvid: string) {
   // 登录状态变化时重新拉取清晰度列表（登录后可能获得更高画质）
   useEffect(() => {
     if (cidRef.current) {
-      fetchPlayData(cidRef.current, 120, true).catch((e) => {
+      fetchPlayData(cidRef.current, 126, true).catch((e) => {
         console.warn('Failed to refresh quality list after login change:', e);
       });
     }
