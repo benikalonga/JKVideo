@@ -46,21 +46,27 @@ export function toListRows(pages: VideoItem[][], liveRooms?: LiveRoom[]): ListRo
 
 
 
-    // if (liveRooms && roomIdx < liveRooms.length && pairs.length > 0) {
-    //   const seed = chunk[0]?.aid ?? 0;
-    //   const insertAt = seed % (pairs.length + 1);
-    //   pairs.splice(insertAt, 0, {
-    //     type: 'live',
-    //     left: liveRooms[roomIdx],
-    //   });
-    //   roomIdx++;
-    // }
+    if (liveRooms && liveRooms.length >= 2) {
+      const a = liveRooms[roomIdx % liveRooms.length];
+      const b = liveRooms[(roomIdx + 1) % liveRooms.length];
+      roomIdx += 2;
 
-
-    if (rows.length < 20) {
-      rows.push({ type: 'big', item: bigItem }, ...pairs);
+      if (rows.length < 20) {
+        rows.push({ type: 'big', item: bigItem });
+        rows.push({ type: 'live', left: a, right: b });
+        rows.push(...pairs);
+      } else {
+        rows.push(...pairs);
+        rows.push({ type: 'big', item: bigItem });
+        rows.push({ type: 'live', left: a, right: b });
+      }
     } else {
-      rows.push(...pairs, { type: 'big', item: bigItem });
+      // No live data, fall back to original logic
+      if (rows.length < 20) {
+        rows.push({ type: 'big', item: bigItem }, ...pairs);
+      } else {
+        rows.push(...pairs, { type: 'big', item: bigItem });
+      }
     }
   }
   return rows;

@@ -207,13 +207,23 @@ export default function HomeScreen() {
     }
     if (row.type === "live") {
       return (
-        <View style={styles.liveRow}>
-          <LiveCard
-            isLivePulse
-            item={row.left}
-            fullWidth
-            onPress={() => router.push(`/live/${row.left.roomid}` as any)}
-          />
+        <View style={styles.row}>
+          <View style={styles.leftCol}>
+            <LiveCard
+              isLivePulse
+              item={row.left}
+              onPress={() => router.push(`/live/${row.left.roomid}` as any)}
+            />
+          </View>
+          {row.right && (
+            <View style={styles.rightCol}>
+              <LiveCard
+                isLivePulse
+                item={row.right}
+                onPress={() => router.push(`/live/${row.right!.roomid}` as any)}
+              />
+            </View>
+          )}
         </View>
       );
     }
@@ -559,9 +569,6 @@ const styles = StyleSheet.create({
   },
   leftCol: { marginLeft: 4, marginRight: 2 },
   rightCol: { marginLeft: 2, marginRight: 4 },
-  liveRow: {
-    paddingHorizontal: 4,
-  },
   footer: {
     height: 48,
     alignItems: "center",
