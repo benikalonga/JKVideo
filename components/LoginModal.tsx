@@ -7,7 +7,12 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Animated,
+  Alert,
 } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import * as MediaLibrary from "expo-media-library";
+import { Ionicons } from "@expo/vector-icons";
 import { generateQRCode, pollQRCode, getUserInfo } from "../services/bilibili";
 import { useAuthStore } from "../store/authStore";
 
@@ -19,6 +24,8 @@ interface Props {
 export function LoginModal({ visible, onClose }: Props) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrKey, setQrKey] = useState<string | null>(null);
+  const [qrImageLoaded, setQrImageLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<
     "loading" | "waiting" | "scanned" | "done" | "error"
   >("loading");
@@ -26,15 +33,31 @@ export function LoginModal({ visible, onClose }: Props) {
   const login = useAuthStore((s) => s.login);
   const setProfile = useAuthStore((s) => s.setProfile);
 
+  // sheet 滑入动画
+  const slideY = useRef(new Animated.Value(300)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideY, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 4,
+      }).start();
+    } else {
+      slideY.setValue(300);
+    }
+  }, [visible]);
+
   useEffect(() => {
     if (!visible) return;
     setStatus("loading");
     setQrUrl(null);
     setQrKey(null);
+    setQrImageLoaded(false);
     generateQRCode()
       .then((data) => {
         setQrUrl(
-          `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.url)}&size=200x200`,
+          `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.url)}&size=400x400`,
         );
         setQrKey(data.qrcode_key);
         setStatus("waiting");
@@ -60,7 +83,6 @@ export function LoginModal({ visible, onClose }: Props) {
         try {
           await login(result.cookie, "", "");
           setStatus("done");
-          // 登录后异步拉取用户头像和昵称
           const info = await getUserInfo();
           setProfile(info.face, info.uname, String(info.mid));
         } catch {
@@ -74,6 +96,26 @@ export function LoginModal({ visible, onClose }: Props) {
     };
   }, [qrKey, status]);
 
+  async function handleSaveQR() {
+    if (!qrUrl) return;
+    setSaving(true);
+    try {
+      const { status: perm } = await MediaLibrary.requestPermissionsAsync();
+      if (perm !== "granted") {
+        Alert.alert("提示", "需要相册权限才能保存图片");
+        return;
+      }
+      const dest = `${FileSystem.cacheDirectory}bilibili_qr.png`;
+      const { uri } = await FileSystem.downloadAsync(qrUrl, dest);
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert("已保存", "二维码已存入相册");
+    } catch {
+      Alert.alert("失败", "保存失败，请重试");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Modal
       visible={visible}
@@ -81,7 +123,13 @@ export function LoginModal({ visible, onClose }: Props) {
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      {/* 遮罩固定不动 */}
+      <View style={styles.overlay} pointerEvents="box-none" />
+
+      {/* sheet 独立滑入 */}
+      <Animated.View
+        style={[styles.sheetWrapper, { transform: [{ translateY: slideY }] }]}
+      >
         <View style={styles.sheet}>
           <Text style={styles.title}>扫码登录</Text>
           {status === "loading" && (
@@ -93,7 +141,31 @@ export function LoginModal({ visible, onClose }: Props) {
           )}
           {(status === "waiting" || status === "scanned") && qrUrl && (
             <>
-              <Image source={{ uri: qrUrl }} style={styles.qr} />
+              <View style={styles.qrWrapper}>
+                <Image
+                  source={{ uri: qrUrl }}
+                  style={styles.qr}
+                  onLoad={() => setQrImageLoaded(true)}
+                />
+                {!qrImageLoaded && (
+                  <View style={styles.qrLoader}>
+                    <ActivityIndicator size="large" color="#00AEEC" />
+                  </View>
+                )}
+                {qrImageLoaded && (
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={handleSaveQR}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="download-outline" size={16} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
               <Text style={styles.hint}>
                 {status === "scanned"
                   ? "扫描成功，请在手机确认"
@@ -108,16 +180,21 @@ export function LoginModal({ visible, onClose }: Props) {
             <Text style={styles.closeTxt}>关闭</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
+  },
+  sheetWrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   sheet: {
     backgroundColor: "#fff",
@@ -128,7 +205,25 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: "600", marginBottom: 20 },
   loader: { marginVertical: 40 },
-  qr: { width: 200, height: 200, marginBottom: 12 },
+  qrWrapper: { width: 200, height: 200, marginBottom: 12 },
+  qr: { width: 200, height: 200 },
+  qrLoader: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f4f4f4",
+  },
+  saveBtn: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   hint: { fontSize: 13, color: "#666", marginBottom: 20 },
   closeBtn: { padding: 12 },
   closeTxt: { fontSize: 14, color: "#00AEEC" },

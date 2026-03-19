@@ -413,7 +413,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                 onQualityChange(80);
                 return;
               }
-              console.warn('Video playback error:', e);
+              console.warn("Video playback error:", e);
             }}
           />
         ) : (
@@ -436,13 +436,12 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
         {showControls && (
           <>
-          {/*  小窗口 */}
+            {/*  小窗口 */}
             <LinearGradient
               colors={["rgba(0,0,0,0.55)", "transparent"]}
               style={styles.topBar}
               pointerEvents="box-none"
-            >
-            </LinearGradient>
+            ></LinearGradient>
 
             <TouchableOpacity
               style={styles.centerBtn}
@@ -580,7 +579,8 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                       q.qn === currentQn && styles.qualityItemActive,
                     ]}
                   >
-                    {q.desc}{q.qn === 126 ? ' DV' : ''}
+                    {q.desc}
+                    {q.qn === 126 ? " DV" : ""}
                   </Text>
                   {q.qn === currentQn && (
                     <Ionicons name="checkmark" size={16} color="#00AEEC" />
@@ -684,7 +684,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   ctrlBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  timeText: { color: "#fff", fontSize: 11, marginHorizontal: 2 },
+  timeText: {
+    color: "#fff",
+    fontSize: 11,
+    marginHorizontal: 2,
+    fontWeight: "600",
+  },
   qualityText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   modalOverlay: {
     flex: 1,
