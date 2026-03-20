@@ -25,11 +25,13 @@ const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
 pkgJson.version = newVersion;
 fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
 
-// Update android/app/build.gradle
+// Update android/app/build.gradle if it exists (skipped in CI before prebuild)
 const gradlePath = path.join(root, 'android', 'app', 'build.gradle');
-let gradle = fs.readFileSync(gradlePath, 'utf8');
-gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${newVersionCode}`);
-gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${newVersion}"`);
-fs.writeFileSync(gradlePath, gradle);
+if (fs.existsSync(gradlePath)) {
+  let gradle = fs.readFileSync(gradlePath, 'utf8');
+  gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${newVersionCode}`);
+  gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${newVersion}"`);
+  fs.writeFileSync(gradlePath, gradle);
+}
 
 console.log(newVersion);
