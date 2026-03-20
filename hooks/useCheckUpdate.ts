@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import Constants from 'expo-constants';
@@ -48,7 +48,11 @@ export function useCheckUpdate() {
         [
           { text: '取消', style: 'cancel' },
           {
-            text: '下载安装',
+            text: '浏览器下载',
+            onPress: () => Linking.openURL(downloadUrl),
+          },
+          {
+            text: '应用内下载',
             onPress: () => downloadAndInstall(downloadUrl, latestVersion),
           },
         ]
