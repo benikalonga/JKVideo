@@ -90,7 +90,7 @@ Android · iOS · Web, Expo Go scan-to-run in 5 minutes, Dev Build unlocks full 
 > Some quality options limited; video falls back to WebView
 
 ```bash
-git clone https://github.com/your-username/JKVideo.git
+git clone https://github.com/tiajinsha/JKVideo.git
 cd JKVideo
 npm install
 npx expo start
@@ -119,7 +119,7 @@ npx expo start --web
 
 ### Direct Install (Android)
 
-Download the latest APK from [Releases](https://github.com/your-username/JKVideo/releases/latest) — no build needed.
+Download the latest APK from [Releases](https://github.com/tiajinsha/JKVideo/releases/latest) — no build needed.
 
 > Enable "Install from unknown sources" in Android settings
 

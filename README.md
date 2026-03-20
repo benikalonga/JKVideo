@@ -119,7 +119,7 @@ npx expo start --web
 
 ### 直接安装（Android）
 
-前往 [Releases](https://github.com/你的用户名/JKVideo/releases/latest) 下载最新 APK，无需编译，安装即用。
+前往 [Releases](https://github.com/tiajinsha/JKVideo/releases/latest) 下载最新 APK，无需编译，安装即用。
 
 > 需在 Android 设置中开启「安装未知来源应用」
 
@@ -180,5 +180,24 @@ utils/                 # 工具函数（格式化、图片代理、MPD 构建）
 <div align="center">
 
 如果这个项目对你有帮助，欢迎点一个 ⭐ Star！
+
+---
+
+## 请作者喝杯咖啡 ☕
+
+如果这个项目对你有所帮助，欢迎请作者喝杯咖啡，你的支持是持续开发的最大动力，感谢每一位愿意打赏的朋友！
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="public/wxpay.jpg" width="180"/><br/>
+      <sub>微信支付</sub>
+    </td>
+    <td align="center">
+      <img src="public/alipay.jpg" width="180"/><br/>
+      <sub>支付宝</sub>
+    </td>
+  </tr>
+</table>
 
 </div>
