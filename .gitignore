@@ -42,3 +42,9 @@ yarn-error.*
 
 # git worktrees
 .worktrees/
+
+# Internal AI instructions & planning docs
+CLAUDE.md
+docs/
+feature.md
+livePlan.md
