@@ -1,13 +1,8 @@
 {
   "expo": {
     "name": "JKVideo",
-<<<<<<< HEAD
     "slug": "jsvideo",
     "version": "1.0.5",
-=======
-    "slug": "jkvideo",
-    "version": "1.0.6",
->>>>>>> 21d9df01566df104c004ce5c63218a7ccfc7e8e1
     "scheme": "bilibili",
     "orientation": "default",
     "icon": "./assets/icon.png",
