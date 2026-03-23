@@ -49,3 +49,4 @@ docs/
 feature.md
 livePlan.md
 Promotion.md
+.env.local
