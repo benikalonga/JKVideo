@@ -7,7 +7,6 @@ import { useAuthStore } from '../store/authStore';
 import { useDownloadStore } from '../store/downloadStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { MiniPlayer } from '../components/MiniPlayer';
-import * as Updates from 'expo-updates';
 import * as Sentry from '@sentry/react-native';
 import { ErrorBoundary } from '@sentry/react-native';
 
@@ -28,18 +27,6 @@ function RootLayout() {
     loadDownloads();
     restoreSettings();
 
-    const checkOTA = async () => {
-      if (!Updates.isEnabled) return;
-      try {
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-        }
-      } catch {
-        // 静默失败，不影响正常使用
-      }
-    };
-    checkOTA();
   }, []);
 
   return (
