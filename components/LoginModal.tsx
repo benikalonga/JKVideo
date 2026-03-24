@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Animated,
   Alert,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
+import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { generateQRCode, pollQRCode, getUserInfo } from "../services/bilibili";
 import { useAuthStore } from "../store/authStore";
@@ -23,10 +23,10 @@ interface Props {
 }
 
 export function LoginModal({ visible, onClose }: Props) {
-  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrData, setQrData] = useState<string | null>(null);
   const [qrKey, setQrKey] = useState<string | null>(null);
-  const [qrImageLoaded, setQrImageLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const qrRef = useRef<any>(null);
   const [status, setStatus] = useState<
     "loading" | "waiting" | "scanned" | "done" | "error"
   >("loading");
@@ -52,14 +52,11 @@ export function LoginModal({ visible, onClose }: Props) {
   useEffect(() => {
     if (!visible) return;
     setStatus("loading");
-    setQrUrl(null);
+    setQrData(null);
     setQrKey(null);
-    setQrImageLoaded(false);
     generateQRCode()
       .then((data) => {
-        setQrUrl(
-          `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data.url)}&size=400x400`,
-        );
+        setQrData(data.url);
         setQrKey(data.qrcode_key);
         setStatus("waiting");
       })
@@ -98,7 +95,7 @@ export function LoginModal({ visible, onClose }: Props) {
   }, [qrKey, status]);
 
   async function handleSaveQR() {
-    if (!qrUrl) return;
+    if (!qrRef.current) return;
     setSaving(true);
     try {
       const { status: perm } = await MediaLibrary.requestPermissionsAsync();
@@ -106,19 +103,28 @@ export function LoginModal({ visible, onClose }: Props) {
         Alert.alert("提示", "需要相册权限才能保存图片");
         return;
       }
-      const dest = `${FileSystem.cacheDirectory}bilibili_qr.png`;
-      const { uri } = await FileSystem.downloadAsync(qrUrl, dest);
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert("已保存", "二维码已存入相册，请用哔哩哔哩扫码登录", [
-        { text: "关闭", style: "cancel" },
-        {
-          text: "打开哔哩哔哩",
-          onPress: () => Linking.openURL("bilibili://"),
-        },
-      ]);
+      qrRef.current.toDataURL(async (base64: string) => {
+        try {
+          const dest = `${FileSystem.cacheDirectory}bilibili_qr.png`;
+          await FileSystem.writeAsStringAsync(dest, base64, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          await MediaLibrary.saveToLibraryAsync(dest);
+          Alert.alert("已保存", "二维码已存入相册，请用哔哩哔哩扫码登录", [
+            { text: "关闭", style: "cancel" },
+            {
+              text: "打开哔哩哔哩",
+              onPress: () => Linking.openURL("bilibili://"),
+            },
+          ]);
+        } catch {
+          Alert.alert("失败", "保存失败，请重试");
+        } finally {
+          setSaving(false);
+        }
+      });
     } catch {
       Alert.alert("失败", "保存失败，请重试");
-    } finally {
       setSaving(false);
     }
   }
@@ -146,32 +152,25 @@ export function LoginModal({ visible, onClose }: Props) {
               style={styles.loader}
             />
           )}
-          {(status === "waiting" || status === "scanned") && qrUrl && (
+          {(status === "waiting" || status === "scanned") && qrData && (
             <>
               <View style={styles.qrWrapper}>
-                <Image
-                  source={{ uri: qrUrl }}
-                  style={styles.qr}
-                  onLoad={() => setQrImageLoaded(true)}
+                <QRCode
+                  value={qrData}
+                  size={200}
+                  getRef={(ref) => { qrRef.current = ref; }}
                 />
-                {!qrImageLoaded && (
-                  <View style={styles.qrLoader}>
-                    <ActivityIndicator size="large" color="#00AEEC" />
-                  </View>
-                )}
-                {qrImageLoaded && (
-                  <TouchableOpacity
-                    style={styles.saveBtn}
-                    onPress={handleSaveQR}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Ionicons name="download-outline" size={16} color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={styles.saveBtn}
+                  onPress={handleSaveQR}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="download-outline" size={16} color="#fff" />
+                  )}
+                </TouchableOpacity>
               </View>
               <Text style={styles.hint}>
                 {status === "scanned"
@@ -213,13 +212,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "600", marginBottom: 20 },
   loader: { marginVertical: 40 },
   qrWrapper: { width: 200, height: 200, marginBottom: 12 },
-  qr: { width: 200, height: 200 },
-  qrLoader: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f4f4f4",
-  },
   saveBtn: {
     position: "absolute",
     bottom: 6,

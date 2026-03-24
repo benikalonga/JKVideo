@@ -4,16 +4,18 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Comment } from '../services/types';
 import { formatTime } from '../utils/format';
 import { proxyImageUrl } from '../utils/imageUrl';
+import { useTheme } from '../utils/theme';
 
 interface Props { item: Comment; }
 
 export function CommentItem({ item }: Props) {
+  const theme = useTheme();
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, { borderBottomColor: theme.border }]}>
       <Image source={{ uri: proxyImageUrl(item.member.avatar) }} style={styles.avatar} />
       <View style={styles.content}>
         <Text style={styles.username}>{item.member.uname}</Text>
-        <Text style={styles.message}>{item.content.message}</Text>
+        <Text style={[styles.message, { color: theme.text }]}>{item.content.message}</Text>
         <View style={styles.footer}>
           <Text style={styles.time}>{formatTime(item.ctime)}</Text>
           <View style={styles.likeRow}>

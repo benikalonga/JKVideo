@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { DanmakuItem } from "../services/types";
 import { danmakuColorToCss } from "../utils/danmaku";
+import { useTheme } from "../utils/theme";
 
 interface Props {
   danmakus: DanmakuItem[];
@@ -65,6 +66,7 @@ export default function DanmakuList({
   maxItems = 100,
   giftCounts,
 }: Props) {
+  const theme = useTheme();
   const flatListRef = useRef<FlatList>(null);
   const [displayedItems, setDisplayedItems] = useState<DisplayedDanmaku[]>([]);
   const [unseenCount, setUnseenCount] = useState(0);
@@ -213,7 +215,7 @@ export default function DanmakuList({
     const guard = item.guardLevel ? GUARD_LABELS[item.guardLevel] : null;
     const timeStr = formatLiveTime(item.timeline);
     return (
-      <Animated.View style={[liveStyles.row, { opacity: item._fadeAnim }]}>
+      <Animated.View style={[liveStyles.row, { opacity: item._fadeAnim, borderBottomColor: theme.border }]}>
         {timeStr ? (
           <Text style={liveStyles.time}>{timeStr}</Text>
         ) : null}
@@ -240,27 +242,27 @@ export default function DanmakuList({
             {item.uname ?? "匿名"}
           </Text>
           <Text style={liveStyles.colon}>：</Text>
-          <Text style={liveStyles.text} numberOfLines={2}>
+          <Text style={[liveStyles.text, { color: theme.text }]} numberOfLines={2}>
             {item.text}
           </Text>
         </View>
       </Animated.View>
     );
-  }, []);
+  }, [theme]);
 
   // ─── Video mode render (original bubble) ───────────────────────────────────
   const renderVideoItem = useCallback(({ item }: { item: DisplayedDanmaku }) => {
     const dotColor = danmakuColorToCss(item.color);
     return (
-      <Animated.View style={[styles.bubble, { opacity: item._fadeAnim }]}>
+      <Animated.View style={[styles.bubble, { opacity: item._fadeAnim, backgroundColor: theme.bg }]}>
         <View style={[styles.colorDot, { backgroundColor: dotColor }]} />
-        <Text style={styles.bubbleText} numberOfLines={3}>
+        <Text style={[styles.bubbleText, { color: theme.text }]} numberOfLines={3}>
           {item.text}
         </Text>
         <Text style={styles.timestamp}>{formatTimestamp(item.time)}</Text>
       </Animated.View>
     );
-  }, []);
+  }, [theme]);
 
   const keyExtractor = useCallback(
     (item: DisplayedDanmaku) => String(item._key),
@@ -268,7 +270,7 @@ export default function DanmakuList({
   );
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, { backgroundColor: theme.card, borderTopColor: theme.border }, style]}>
       {!hideHeader && (
         <TouchableOpacity
           style={styles.header}
@@ -298,7 +300,7 @@ export default function DanmakuList({
             data={displayedItems}
             keyExtractor={keyExtractor}
             renderItem={isLive ? renderLiveItem : renderVideoItem}
-            style={isLive ? liveStyles.list : styles.list}
+            style={[isLive ? liveStyles.list : styles.list, { backgroundColor: theme.bg }]}
             contentContainerStyle={isLive ? liveStyles.listContent : styles.listContent}
             onScroll={handleScroll}
             onScrollBeginDrag={handleScrollBeginDrag}

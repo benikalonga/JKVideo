@@ -22,12 +22,14 @@ import { useRelatedVideos } from "../../hooks/useRelatedVideos";
 import { formatCount, formatDuration } from "../../utils/format";
 import { proxyImageUrl } from "../../utils/imageUrl";
 import { DownloadSheet } from "../../components/DownloadSheet";
+import { useTheme } from "../../utils/theme";
 
 type Tab = "intro" | "comments" | "danmaku";
 
 export default function VideoDetailScreen() {
   const { bvid } = useLocalSearchParams<{ bvid: string }>();
   const router = useRouter();
+  const theme = useTheme();
   const {
     video,
     playData,
@@ -67,20 +69,27 @@ export default function VideoDetailScreen() {
   }, [video?.cid]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.card }]}>
       {/* TopBar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#212121" />
+          <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.topTitle} numberOfLines={1}>
+        <Text
+          style={[styles.topTitle, { color: theme.text }]}
+          numberOfLines={1}
+        >
           {video?.title ?? "视频详情"}
         </Text>
         <TouchableOpacity
           style={styles.miniBtn}
           onPress={() => setShowDownload(true)}
         >
-          <Ionicons name="cloud-download-outline" size={22} color="#212121" />
+          <Ionicons
+            name="cloud-download-outline"
+            size={22}
+            color={theme.text}
+          />
         </TouchableOpacity>
       </View>
 
@@ -105,15 +114,19 @@ export default function VideoDetailScreen() {
         qualities={qualities}
       />
 
-      {/* TabBar — sits directly below player, always visible once video loads */}
+      {/* TabBar */}
       {video && (
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
           <TouchableOpacity
             style={styles.tabItem}
             onPress={() => setTab("intro")}
           >
             <Text
-              style={[styles.tabLabel, tab === "intro" && styles.tabActive]}
+              style={[
+                styles.tabLabel,
+                { color: theme.textSub },
+                tab === "intro" && styles.tabActive,
+              ]}
             >
               简介
             </Text>
@@ -124,7 +137,11 @@ export default function VideoDetailScreen() {
             onPress={() => setTab("comments")}
           >
             <Text
-              style={[styles.tabLabel, tab === "comments" && styles.tabActive]}
+              style={[
+                styles.tabLabel,
+                { color: theme.textSub },
+                tab === "comments" && styles.tabActive,
+              ]}
             >
               评论
               {video.stat?.reply > 0 ? ` ${formatCount(video.stat.reply)}` : ""}
@@ -136,7 +153,11 @@ export default function VideoDetailScreen() {
             onPress={() => setTab("danmaku")}
           >
             <Text
-              style={[styles.tabLabel, tab === "danmaku" && styles.tabActive]}
+              style={[
+                styles.tabLabel,
+                { color: theme.textSub },
+                tab === "danmaku" && styles.tabActive,
+              ]}
             >
               弹幕
               {danmakus.length > 0 ? ` ${formatCount(danmakus.length)}` : ""}
@@ -168,13 +189,25 @@ export default function VideoDetailScreen() {
                       source={{ uri: proxyImageUrl(video.owner.face) }}
                       style={styles.avatar}
                     />
-                    <Text style={styles.upName}>{video.owner.name}</Text>
+                    <Text style={[styles.upName, { color: theme.text }]}>
+                      {video.owner.name}
+                    </Text>
                     <TouchableOpacity style={styles.followBtn}>
                       <Text style={styles.followTxt}>+ 关注</Text>
                     </TouchableOpacity>
                   </View>
-                  <View style={styles.titleSection}>
-                    <Text style={styles.title}>{video.title}</Text>
+                  <View
+                    style={[
+                      styles.titleSection,
+                      { borderBottomColor: theme.border },
+                    ]}
+                  >
+                    <Text style={[styles.title, { color: theme.text }]}>
+                      {video.title}
+                    </Text>
+                    <Text style={[styles.subTitle, { color: theme.text }]}>
+                      {video.desc || "暂无简介"}
+                    </Text>
                     <View style={styles.statsRow}>
                       <StatBadge icon="play" count={video.stat.view} />
                       <StatBadge icon="heart" count={video.stat.like} />
@@ -191,23 +224,40 @@ export default function VideoDetailScreen() {
                       }
                     />
                   )}
-                  <View style={styles.descBox}>
-                    <Text style={styles.descText}>
-                      {video.desc || "暂无简介"}
+                  <View
+                    style={[
+                      styles.relatedHeader,
+                      {
+                        backgroundColor: theme.card,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.relatedHeaderText, { color: theme.text }]}
+                    >
+                      推荐视频
                     </Text>
-                  </View>
-                  <View style={styles.relatedHeader}>
-                    <Text style={styles.relatedHeaderText}>推荐视频</Text>
                   </View>
                 </>
               }
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.relatedCard}
+                  style={[
+                    styles.relatedCard,
+                    {
+                      backgroundColor: theme.card,
+                      borderBottomColor: theme.border,
+                    },
+                  ]}
                   onPress={() => router.push(`/video/${item.bvid}` as any)}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.relatedThumbWrap}>
+                  <View
+                    style={[
+                      styles.relatedThumbWrap,
+                      { backgroundColor: theme.card },
+                    ]}
+                  >
                     <Image
                       source={{ uri: proxyImageUrl(item.pic) }}
                       style={styles.relatedThumb}
@@ -220,7 +270,10 @@ export default function VideoDetailScreen() {
                     </View>
                   </View>
                   <View style={styles.relatedInfo}>
-                    <Text style={styles.relatedTitle} numberOfLines={2}>
+                    <Text
+                      style={[styles.relatedTitle, { color: theme.text }]}
+                      numberOfLines={2}
+                    >
                       {item.title}
                     </Text>
                     <View
@@ -241,7 +294,7 @@ export default function VideoDetailScreen() {
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                !relatedLoading ? (
+                relatedLoading ? (
                   <ActivityIndicator style={styles.loader} color="#00AEEC" />
                 ) : null
               }
@@ -265,7 +318,9 @@ export default function VideoDetailScreen() {
               onEndReachedThreshold={0.3}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
-                <View style={styles.sortRow}>
+                <View
+                  style={[styles.sortRow, { borderBottomColor: theme.border }]}
+                >
                   <Text style={styles.sortLabel}>排序</Text>
                   <TouchableOpacity
                     style={[
@@ -352,17 +407,17 @@ function SeasonSection({
   currentBvid: string;
   onEpisodePress: (bvid: string) => void;
 }) {
+  const theme = useTheme();
   const episodes = season.sections?.[0]?.episodes ?? [];
   const currentIndex = episodes.findIndex((ep) => ep.bvid === currentBvid);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (currentIndex <= 0 || episodes.length === 0) return;
-    // 等布局完成再滚动
     const t = setTimeout(() => {
       listRef.current?.scrollToIndex({
         index: currentIndex,
-        viewPosition: 0.5, // 居中
+        viewPosition: 0.5,
         animated: false,
       });
     }, 200);
@@ -370,9 +425,16 @@ function SeasonSection({
   }, [currentIndex, episodes.length]);
 
   return (
-    <View style={styles.seasonBox}>
+    <View
+      style={[
+        styles.seasonBox,
+        { borderTopColor: theme.border, backgroundColor: theme.card },
+      ]}
+    >
       <View style={styles.seasonHeader}>
-        <Text style={styles.seasonTitle}>合集 · {season.title}</Text>
+        <Text style={[styles.seasonTitle, { color: theme.text }]}>
+          合集 · {season.title}
+        </Text>
         <Text style={styles.seasonCount}>{season.ep_count}个视频</Text>
         <Ionicons name="chevron-forward" size={14} color="#999" />
       </View>
@@ -383,10 +445,9 @@ function SeasonSection({
         data={episodes}
         keyExtractor={(ep) => ep.bvid}
         contentContainerStyle={{ paddingHorizontal: 12, gap: 10 }}
-        // 每个卡片宽 120，gap 10，让 FlatList 直接算任意索引的偏移量
         getItemLayout={(_data, index) => ({
           length: 130,
-          offset: 12 + index * 130,
+          offset: 12 + index * 140,
           index,
         })}
         onScrollToIndexFailed={() => {}}
@@ -394,20 +455,27 @@ function SeasonSection({
           const isCurrent = ep.bvid === currentBvid;
           return (
             <TouchableOpacity
-              style={[styles.epCard, isCurrent && styles.epCardActive]}
+              style={[
+                styles.epCard,
+                { backgroundColor: theme.card },
+                isCurrent && styles.epCardActive,
+              ]}
               onPress={() => !isCurrent && onEpisodePress(ep.bvid)}
               activeOpacity={0.8}
             >
               {ep.arc?.pic && (
                 <Image
                   source={{ uri: proxyImageUrl(ep.arc.pic) }}
-                  style={styles.epThumb}
+                  style={[styles.epThumb, { backgroundColor: theme.card }]}
                 />
               )}
               <Text style={[styles.epNum, isCurrent && styles.epNumActive]}>
                 第{index + 1}集
               </Text>
-              <Text style={styles.epTitle} numberOfLines={2}>
+              <Text
+                style={[styles.epTitle, { color: theme.text }]}
+                numberOfLines={2}
+              >
                 {ep.title}
               </Text>
             </TouchableOpacity>
@@ -419,14 +487,13 @@ function SeasonSection({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
+  safe: { flex: 1 },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#eee",
   },
   backBtn: { padding: 4 },
   topTitle: {
@@ -434,20 +501,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     marginLeft: 4,
-    color: "#212121",
   },
   miniBtn: { padding: 4 },
   loader: { marginVertical: 30 },
   titleSection: {
     padding: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f0f0f0",
   },
   title: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#212121",
     lineHeight: 22,
+    marginBottom: 8,
+  },
+  subTitle: {
+    fontSize: 10,
     marginBottom: 8,
   },
   statsRow: { flexDirection: "row", gap: 16 },
@@ -460,8 +528,8 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     paddingTop: 12,
   },
-  avatar: { width: 48, height: 48, borderRadius:30, marginRight: 10 },
-  upName: { flex: 1, fontSize: 14, color: "#212121", fontWeight: "500" },
+  avatar: { width: 48, height: 48, borderRadius: 30, marginRight: 10 },
+  upName: { flex: 1, fontSize: 14, fontWeight: "500" },
   followBtn: {
     backgroundColor: "#00AEEC",
     paddingHorizontal: 10,
@@ -471,7 +539,6 @@ const styles = StyleSheet.create({
   followTxt: { color: "#fff", fontSize: 12, fontWeight: "500" },
   seasonBox: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f0f0f0",
     paddingVertical: 10,
   },
   seasonHeader: {
@@ -481,23 +548,21 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 4,
   },
-  seasonTitle: { flex: 1, fontSize: 13, fontWeight: "600", color: "#212121" },
+  seasonTitle: { flex: 1, fontSize: 13, fontWeight: "600" },
   seasonCount: { fontSize: 12, color: "#999" },
   epCard: {
     width: 120,
     borderRadius: 6,
     overflow: "hidden",
-    backgroundColor: "#f8f8f8",
     borderWidth: 1.5,
     borderColor: "transparent",
   },
   epCardActive: { borderColor: "#00AEEC" },
-  epThumb: { width: 120, height: 68, backgroundColor: "#eee" },
+  epThumb: { width: 120, height: 68 },
   epNum: { fontSize: 11, color: "#999", paddingHorizontal: 6, paddingTop: 4 },
   epNumActive: { color: "#00AEEC", fontWeight: "600" },
   epTitle: {
     fontSize: 12,
-    color: "#333",
     paddingHorizontal: 6,
     paddingBottom: 6,
     lineHeight: 16,
@@ -505,7 +570,6 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#eee",
   },
   tabItem: {
     flex: 1,
@@ -513,7 +577,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     position: "relative",
   },
-  tabLabel: { fontSize: 13, color: "#999" },
+  tabLabel: { fontSize: 13 },
   tabActive: { color: "#00AEEC" },
   tabUnderline: {
     position: "absolute",
@@ -525,28 +589,23 @@ const styles = StyleSheet.create({
   },
   tabScroll: { flex: 1 },
   descBox: { padding: 16 },
-  descText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  descText: { fontSize: 14, lineHeight: 22 },
   danmakuTab: { flex: 1 },
   emptyTxt: { textAlign: "center", color: "#bbb", padding: 30 },
   relatedHeader: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f0f0f0",
-    backgroundColor: "#f4f4f4",
+    paddingLeft: 12,
+    paddingBottom: 8,
+    paddingTop: 8,
   },
   relatedHeaderText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: "#212121",
   },
   relatedCard: {
     flexDirection: "row",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#fff",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f0f0f0",
     gap: 10,
   },
   relatedThumbWrap: {
@@ -555,7 +614,6 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 4,
     overflow: "hidden",
-    backgroundColor: "#eee",
     flexShrink: 0,
   },
   relatedThumb: { width: 120, height: 68 },
@@ -574,7 +632,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 2,
   },
-  relatedTitle: { fontSize: 13, color: "#212121", lineHeight: 18 },
+  relatedTitle: { fontSize: 13, lineHeight: 18 },
   relatedOwner: { fontSize: 12, color: "#999" },
   relatedView: { fontSize: 11, color: "#bbb" },
   sortRow: {
@@ -584,7 +642,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f0f0f0",
   },
   sortLabel: { fontSize: 13, color: "#999", marginRight: 4 },
   sortBtn: {

@@ -12,12 +12,14 @@ import { useAuthStore } from "../store/authStore";
 import { getFollowedLiveRooms } from "../services/bilibili";
 import { LivePulse } from "./LivePulse";
 import { proxyImageUrl } from "../utils/imageUrl";
+import { useTheme } from "../utils/theme";
 import type { LiveRoom } from "../services/types";
 
 export function FollowedLiveStrip() {
   const { sessdata } = useAuthStore();
   const [rooms, setRooms] = useState<LiveRoom[]>([]);
   const router = useRouter();
+  const theme = useTheme();
 
   useEffect(() => {
     if (!sessdata) return;
@@ -29,7 +31,7 @@ export function FollowedLiveStrip() {
   if (!sessdata || rooms.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -48,9 +50,9 @@ export function FollowedLiveStrip() {
             </View>
             <Image
               source={{ uri: proxyImageUrl(room.face) }}
-              style={styles.avatar}
+              style={[styles.avatar, { backgroundColor: theme.card }]}
             />
-            <Text style={styles.name} numberOfLines={1}>
+            <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
               {room.uname.length > 5 ? room.uname.slice(0, 5) : room.uname}
             </Text>
           </TouchableOpacity>
@@ -63,7 +65,7 @@ export function FollowedLiveStrip() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#f4f4f4",
-    paddingHorizontal: 12,
+    paddingHorizontal: 3,
     paddingVertical: 8,
   },
   scrollContent: {
