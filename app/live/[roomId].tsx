@@ -17,12 +17,14 @@ import { LivePlayer } from "../../components/LivePlayer";
 import DanmakuList from "../../components/DanmakuList";
 import { formatCount } from "../../utils/format";
 import { proxyImageUrl } from "../../utils/imageUrl";
+import { useTheme } from "../../utils/theme";
 
 type Tab = "intro" | "danmaku";
 
 export default function LiveDetailScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const router = useRouter();
+  const theme = useTheme();
   const id = parseInt(roomId ?? "0", 10);
   const { room, anchor, stream, loading, error, changeQuality } =
     useLiveDetail(id);
@@ -34,17 +36,17 @@ export default function LiveDetailScreen() {
   const qualities = stream?.qualities ?? [];
   const currentQn = stream?.qn ?? 0;
 
-  // Use actual roomid from room detail (not the short/alias ID from the URL)
   const actualRoomId = room?.roomid ?? id;
   const { danmakus, giftCounts } = useLiveDanmaku(isLive ? actualRoomId : 0);
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.card }]}>
       {/* TopBar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#212121" />
+          <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.topTitle} numberOfLines={1}>
+        <Text style={[styles.topTitle, { color: theme.text }]} numberOfLines={1}>
           {room?.title ?? "直播间"}
         </Text>
       </View>
@@ -60,12 +62,12 @@ export default function LiveDetailScreen() {
       />
 
       {/* TabBar */}
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={styles.tabItem}
           onPress={() => setTab("intro")}
         >
-          <Text style={[styles.tabLabel, tab === "intro" && styles.tabActive]}>
+          <Text style={[styles.tabLabel, { color: theme.textSub }, tab === "intro" && styles.tabActive]}>
             简介
           </Text>
           {tab === "intro" && <View style={styles.tabUnderline} />}
@@ -75,7 +77,7 @@ export default function LiveDetailScreen() {
           onPress={() => setTab("danmaku")}
         >
           <Text
-            style={[styles.tabLabel, tab === "danmaku" && styles.tabActive]}
+            style={[styles.tabLabel, { color: theme.textSub }, tab === "danmaku" && styles.tabActive]}
           >
             弹幕{danmakus.length > 0 ? ` ${danmakus.length}` : ""}
           </Text>
@@ -83,7 +85,7 @@ export default function LiveDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Content — 两个面板始终挂载，通过 display 切换，保留弹幕列表状态 */}
+      {/* Content */}
       {loading ? (
         <ActivityIndicator style={styles.loader} color="#00AEEC" />
       ) : error ? (
@@ -95,7 +97,7 @@ export default function LiveDetailScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.titleSection}>
-              <Text style={styles.title}>{room?.title}</Text>
+              <Text style={[styles.title, { color: theme.text }]}>{room?.title}</Text>
               <View style={styles.metaRow}>
                 {isLive ? (
                   <View style={styles.livePill}>
@@ -126,7 +128,7 @@ export default function LiveDetailScreen() {
               </View>
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             {anchor && (
               <View style={styles.anchorRow}>
@@ -134,7 +136,7 @@ export default function LiveDetailScreen() {
                   source={{ uri: proxyImageUrl(anchor.face) }}
                   style={styles.avatar}
                 />
-                <Text style={styles.anchorName}>{anchor.uname}</Text>
+                <Text style={[styles.anchorName, { color: theme.text }]}>{anchor.uname}</Text>
                 <TouchableOpacity style={styles.followBtn}>
                   <Text style={styles.followTxt}>+ 关注</Text>
                 </TouchableOpacity>
@@ -143,7 +145,7 @@ export default function LiveDetailScreen() {
 
             {!!room?.description && (
               <View style={styles.descBox}>
-                <Text style={styles.descText}>{room.description}</Text>
+                <Text style={[styles.descText, { color: theme.text }]}>{room.description}</Text>
               </View>
             )}
           </ScrollView>
@@ -166,14 +168,13 @@ export default function LiveDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
+  safe: { flex: 1 },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#eee",
   },
   backBtn: { padding: 4 },
   topTitle: {
@@ -181,15 +182,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     marginLeft: 4,
-    color: "#212121",
   },
   loader: { marginVertical: 30 },
   errorText: { textAlign: "center", color: "#f00", padding: 20 },
   tabBar: {
     flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#eee",
-    backgroundColor: "#fff",
   },
   tabItem: {
     paddingHorizontal: 20,
@@ -197,7 +195,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-  tabLabel: { fontSize: 14, color: "#999", fontWeight: "500" },
+  tabLabel: { fontSize: 14, fontWeight: "500" },
   tabActive: { color: "#00AEEC", fontWeight: "700" },
   tabUnderline: {
     position: "absolute",
@@ -212,7 +210,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#212121",
     lineHeight: 22,
     marginBottom: 8,
   },
@@ -248,7 +245,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "#f0f0f0",
     marginHorizontal: 14,
   },
   anchorRow: {
@@ -258,7 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  anchorName: { flex: 1, fontSize: 14, color: "#212121", fontWeight: "500" },
+  anchorName: { flex: 1, fontSize: 14, fontWeight: "500" },
   followBtn: {
     backgroundColor: "#00AEEC",
     paddingHorizontal: 14,
@@ -267,7 +263,7 @@ const styles = StyleSheet.create({
   },
   followTxt: { color: "#fff", fontSize: 12, fontWeight: "600" },
   descBox: { padding: 14, paddingTop: 4 },
-  descText: { fontSize: 14, color: "#555", lineHeight: 22 },
+  descText: { fontSize: 14, lineHeight: 22 },
   danmakuFull: { flex: 1 },
   hidden: { display: "none" },
 });
