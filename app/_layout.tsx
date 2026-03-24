@@ -9,6 +9,8 @@ import { useSettingsStore } from '../store/settingsStore';
 import { MiniPlayer } from '../components/MiniPlayer';
 import * as Sentry from '@sentry/react-native';
 import { ErrorBoundary } from '@sentry/react-native';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
@@ -22,12 +24,17 @@ function RootLayout() {
   const loadDownloads = useDownloadStore(s => s.loadFromStorage);
   const restoreSettings = useSettingsStore(s => s.restore);
 
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+  });
+
   useEffect(() => {
     restore();
     loadDownloads();
     restoreSettings();
-
   }, []);
+
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>
