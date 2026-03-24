@@ -245,8 +245,6 @@ export default function VideoDetailScreen() {
                   style={[
                     styles.relatedCard,
                     {
-                      borderTopWidth: StyleSheet.hairlineWidth,
-                      borderTopColor: theme.border,
                       backgroundColor: theme.card,
                       borderBottomColor: theme.border,
                     },
@@ -296,7 +294,7 @@ export default function VideoDetailScreen() {
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                !relatedLoading ? (
+                relatedLoading ? (
                   <ActivityIndicator style={styles.loader} color="#00AEEC" />
                 ) : null
               }
@@ -449,7 +447,7 @@ function SeasonSection({
         contentContainerStyle={{ paddingHorizontal: 12, gap: 10 }}
         getItemLayout={(_data, index) => ({
           length: 130,
-          offset: 12 + index * 130,
+          offset: 12 + index * 140,
           index,
         })}
         onScrollToIndexFailed={() => {}}
