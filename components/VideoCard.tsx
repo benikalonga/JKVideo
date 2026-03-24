@@ -34,7 +34,7 @@ export const VideoCard = React.memo(function VideoCard({ item, onPress }: Props)
       <View style={styles.thumbContainer}>
         <Image
           source={{ uri: coverImageUrl(item.pic, trafficSaving ? 'normal' : 'hd') }}
-          style={styles.thumb}
+          style={[styles.thumb, { backgroundColor: theme.card }]}
           resizeMode="cover"
         />
         <View style={styles.meta}>

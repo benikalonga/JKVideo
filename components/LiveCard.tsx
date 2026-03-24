@@ -43,7 +43,7 @@ export const LiveCard = React.memo(function LiveCard({
           source={{ uri: proxyImageUrl(item.cover) }}
           style={[
             styles.thumb,
-            { width: cardWidth, height: cardWidth * 0.5625 },
+            { width: cardWidth, height: cardWidth * 0.5625, backgroundColor: theme.card },
           ]}
           resizeMode="cover"
         />
