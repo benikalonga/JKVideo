@@ -209,7 +209,7 @@ export default function VideoDetailScreen() {
                   onPress={() => router.push(`/video/${item.bvid}` as any)}
                   activeOpacity={0.85}
                 >
-                  <View style={[styles.relatedThumbWrap, { backgroundColor: theme.bg }]}>
+                  <View style={[styles.relatedThumbWrap, { backgroundColor: theme.card }]}>
                     <Image
                       source={{ uri: proxyImageUrl(item.pic) }}
                       style={styles.relatedThumb}
