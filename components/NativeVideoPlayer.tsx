@@ -109,8 +109,10 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
     const [paused, setPaused] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
+    const currentTimeRef = useRef(0);
     const [duration, setDuration] = useState(0);
     const durationRef = useRef(0);
+    const lastProgressUpdate = useRef(0);
 
     const [showQuality, setShowQuality] = useState(false);
 
@@ -318,16 +320,6 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       const local = frameIdx % framesPerSheet;
       const col = local % img_x_len;
       const row = Math.floor(local / img_x_len);
-      console.log("[thumb]", {
-        seekTime,
-        duration,
-        indexLen: index?.length,
-        frameIdx,
-        totalFrames,
-        sheetIdx,
-        col,
-        row,
-      });
       //  根据单帧图尺寸和预设的显示宽度计算缩放后的显示尺寸，保持宽高比
       const scale = THUMB_DISPLAY_W / TW;
       const DW = THUMB_DISPLAY_W;
@@ -396,19 +388,31 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             resizeMode="contain"
             controls={false}
             paused={!!(forcePaused || paused)}
+            progressUpdateInterval={500}
             onProgress={({
               currentTime: ct,
               seekableDuration: dur,
               playableDuration: buf,
             }) => {
-              setCurrentTime(ct);
-              if (dur > 0) setDuration(dur);
-              setBuffered(buf);
+              currentTimeRef.current = ct;
               onTimeUpdate?.(ct);
+              // 拖动进度条时跳过 UI 更新，避免与用户拖动冲突
+              if (isSeekingRef.current) return;
+              const now = Date.now();
+              if (now - lastProgressUpdate.current < 450) return;
+              lastProgressUpdate.current = now;
+              setCurrentTime(ct);
+              if (dur > 0 && Math.abs(dur - durationRef.current) > 1) setDuration(dur);
+              setBuffered(buf);
             }}
             onLoad={() => {
               if (initialTime && initialTime > 0) {
                 videoRef.current?.seek(initialTime);
+              }
+              // seek 后部分播放器不恢复播放，先暂停再恢复，强制触发 prop 变化
+              if (!forcePaused) {
+                setPaused(true);
+                requestAnimationFrame(() => setPaused(false));
               }
             }}
             onError={(e) => {

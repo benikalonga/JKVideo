@@ -6,10 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   Modal,
   StatusBar,
-  useWindowDimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -19,6 +18,8 @@ let ScreenOrientation: typeof import('expo-screen-orientation') | null = null;
 try { ScreenOrientation = require('expo-screen-orientation'); } catch {}
 import { useDownloadStore, DownloadTask } from '../store/downloadStore';
 import { LanShareModal } from '../components/LanShareModal';
+import { proxyImageUrl } from '../utils/imageUrl';
+import { useTheme } from '../utils/theme';
 
 function formatFileSize(bytes?: number): string {
   if (!bytes || bytes <= 0) return '';
@@ -26,8 +27,6 @@ function formatFileSize(bytes?: number): string {
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
-import { proxyImageUrl } from '../utils/imageUrl';
-import { useTheme } from '../utils/theme';
 
 export default function DownloadsScreen() {
   const router = useRouter();
@@ -36,8 +35,6 @@ export default function DownloadsScreen() {
   const [playingUri, setPlayingUri] = useState<string | null>(null);
   const [playingTitle, setPlayingTitle] = useState('');
   const [shareTask, setShareTask] = useState<(DownloadTask & { key: string }) | null>(null);
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
 
   async function openPlayer(uri: string, title: string) {
     setPlayingTitle(title);
@@ -48,6 +45,18 @@ export default function DownloadsScreen() {
   async function closePlayer() {
     setPlayingUri(null);
     await ScreenOrientation?.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  }
+
+  function confirmDelete(key: string, status: DownloadTask['status']) {
+    const isDownloading = status === 'downloading';
+    Alert.alert(
+      isDownloading ? '取消下载' : '删除下载',
+      isDownloading ? '确定取消该下载任务？' : '确定删除该文件？删除后不可恢复。',
+      [
+        { text: '取消', style: 'cancel' },
+        { text: isDownloading ? '取消下载' : '删除', style: 'destructive', onPress: () => removeTask(key) },
+      ],
+    );
   }
 
   useEffect(() => {
@@ -74,29 +83,33 @@ export default function DownloadsScreen() {
 
       {sections.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="cloud-download-outline" size={56} color="#ccc" />
-          <Text style={styles.emptyTxt}>暂无下载记录</Text>
+          <Ionicons name="cloud-download-outline" size={56} color={theme.textSub} />
+          <Text style={[styles.emptyTxt, { color: theme.textSub }]}>暂无下载记录</Text>
         </View>
       ) : (
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.key}
           renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={[styles.sectionHeader, { backgroundColor: theme.bg }]}>
+              <Text style={[styles.sectionTitle, { color: theme.textSub }]}>{section.title}</Text>
             </View>
           )}
           renderItem={({ item }) => (
             <DownloadRow
               task={item}
+              theme={theme}
               onPlay={() => {
                 if (item.localUri) openPlayer(item.localUri, item.title);
               }}
-              onDelete={() => removeTask(item.key)}
+              onDelete={() => confirmDelete(item.key, item.status)}
               onShare={() => setShareTask(item)}
+              onRetry={() => router.push(`/video/${item.bvid}` as any)}
             />
           )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={() => (
+            <View style={[styles.separator, { backgroundColor: theme.border, marginLeft: 108 }]} />
+          )}
           contentContainerStyle={{ paddingBottom: 32 }}
         />
       )}
@@ -119,22 +132,18 @@ export default function DownloadsScreen() {
           {playingUri && (
             <Video
               source={{ uri: playingUri }}
-              style={isLandscape
-                ? { width, height }
-                : { width, height: width * 0.5625 }}
+              style={StyleSheet.absoluteFillObject}
               resizeMode="contain"
               controls
               paused={false}
             />
           )}
-          {!isLandscape && (
-            <View style={styles.playerBar}>
-              <TouchableOpacity onPress={closePlayer} style={styles.closeBtn}>
-                <Ionicons name="chevron-back" size={24} color="#fff" />
-              </TouchableOpacity>
-              <Text style={styles.playerTitle} numberOfLines={1}>{playingTitle}</Text>
-            </View>
-          )}
+          <View style={styles.playerBar}>
+            <TouchableOpacity onPress={closePlayer} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="chevron-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.playerTitle} numberOfLines={1}>{playingTitle}</Text>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -143,98 +152,114 @@ export default function DownloadsScreen() {
 
 function DownloadRow({
   task,
+  theme,
   onPlay,
   onDelete,
   onShare,
+  onRetry,
 }: {
   task: DownloadTask & { key: string };
+  theme: ReturnType<typeof useTheme>;
   onPlay: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onRetry: () => void;
 }) {
-  return (
-    <View style={styles.row}>
-      <Image
-        source={{ uri: proxyImageUrl(task.cover) }}
-        style={styles.cover}
-      />
+  const isDone = task.status === 'done';
+  const isError = task.status === 'error';
+  const isDownloading = task.status === 'downloading';
+
+  const rowContent = (
+    <View style={[styles.row, { backgroundColor: theme.card }]}>
+      <Image source={{ uri: proxyImageUrl(task.cover) }} style={styles.cover} />
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>{task.title}</Text>
-        <Text style={styles.qdesc}>
+        <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{task.title}</Text>
+        <Text style={[styles.qdesc, { color: theme.textSub }]}>
           {task.qdesc}{task.fileSize ? `  ·  ${formatFileSize(task.fileSize)}` : ''}
         </Text>
-        {task.status === 'downloading' && (
+        {isDownloading && (
           <View style={styles.progressWrap}>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.round(task.progress * 100)}%` as any }]} />
             </View>
-            <ActivityIndicator size="small" color="#00AEEC" style={{ marginLeft: 6 }} />
             <Text style={styles.progressTxt}>{Math.round(task.progress * 100)}%</Text>
           </View>
         )}
-        {task.status === 'error' && (
-          <Text style={styles.errorTxt} numberOfLines={1}>{task.error ?? '下载失败'}</Text>
+        {isError && (
+          <View style={styles.errorRow}>
+            <Text style={styles.errorTxt} numberOfLines={1}>{task.error ?? '下载失败'}</Text>
+            <TouchableOpacity onPress={onRetry} style={styles.retryBtn}>
+              <Text style={styles.retryTxt}>重新下载</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
       <View style={styles.actions}>
-        {task.status === 'done' && (
-          <>
-            <TouchableOpacity style={styles.playBtn} onPress={onPlay}>
-              <Ionicons name="play-circle" size={20} color="#00AEEC" />
-              <Text style={styles.playTxt}>播放</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shareBtn} onPress={onShare}>
-              <Ionicons name="share-social-outline" size={20} color="#00AEEC" />
-            </TouchableOpacity>
-          </>
+        {isDone && (
+          <TouchableOpacity style={styles.actionBtn} onPress={onShare}>
+            <Ionicons name="share-social-outline" size={20} color="#00AEEC" />
+          </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-          <Ionicons name="trash-outline" size={18} color="#bbb" />
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={isDownloading ? onDelete : onDelete}
+        >
+          <Ionicons
+            name={isDownloading ? 'close-circle-outline' : 'trash-outline'}
+            size={20}
+            color={isDownloading ? '#bbb' : '#bbb'}
+          />
         </TouchableOpacity>
       </View>
     </View>
   );
+
+  if (isDone) {
+    return (
+      <TouchableOpacity activeOpacity={0.85} onPress={onPlay}>
+        {rowContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return rowContent;
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe: { flex: 1 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
   },
   backBtn: { padding: 4 },
   topTitle: {
     flex: 1,
     fontSize: 16,
     fontWeight: '700',
-    color: '#212121',
     marginLeft: 4,
   },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyTxt: { fontSize: 14, color: '#bbb' },
+  emptyTxt: { fontSize: 14 },
   sectionHeader: {
-    backgroundColor: '#f4f4f4',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: '#555' },
+  sectionTitle: { fontSize: 13, fontWeight: '600' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     gap: 12,
   },
-  cover: { width: 80, height: 54, borderRadius: 6, backgroundColor: '#eee' },
+  cover: { width: 80, height: 54, borderRadius: 6, backgroundColor: '#eee', flexShrink: 0 },
   info: { flex: 1 },
-  title: { fontSize: 13, color: '#212121', lineHeight: 18, marginBottom: 4 },
-  qdesc: { fontSize: 12, color: '#999', marginBottom: 4 },
-  progressWrap: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  title: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  qdesc: { fontSize: 12, marginBottom: 4 },
+  progressWrap: { flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 6 },
   progressTrack: {
     flex: 1,
     height: 3,
@@ -243,14 +268,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: 3, backgroundColor: '#00AEEC', borderRadius: 2 },
-  progressTxt: { fontSize: 11, color: '#999', marginLeft: 4 },
-  errorTxt: { fontSize: 12, color: '#f44', marginTop: 2 },
-  actions: { alignItems: 'center', gap: 8 },
-  playBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  playTxt: { fontSize: 13, color: '#00AEEC' },
-  shareBtn: { padding: 4 },
-  deleteBtn: { padding: 4 },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#f0f0f0', marginLeft: 108 },
+  progressTxt: { fontSize: 11, color: '#999', minWidth: 30 },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  errorTxt: { fontSize: 12, color: '#f44', flex: 1 },
+  retryBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#e8f7fd',
+  },
+  retryTxt: { fontSize: 12, color: '#00AEEC', fontWeight: '600' },
+  actions: { alignItems: 'center', gap: 12 },
+  actionBtn: { padding: 4 },
+  separator: { height: StyleSheet.hairlineWidth },
   // player modal
   playerBg: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
   playerBar: {
@@ -261,6 +291,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingVertical: 8,
   },
   closeBtn: { padding: 6 },
   playerTitle: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 4 },

@@ -8,6 +8,7 @@ import { useDownloadStore } from '../store/downloadStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useTheme } from '../utils/theme';
 import { MiniPlayer } from '../components/MiniPlayer';
+import { LiveMiniPlayer } from '../components/LiveMiniPlayer';
 import * as Sentry from '@sentry/react-native';
 import { ErrorBoundary } from '@sentry/react-native';
 import { useFonts } from 'expo-font';
@@ -87,6 +88,7 @@ function RootLayout() {
           </Stack>
         </ErrorBoundary>
         <MiniPlayer />
+        <LiveMiniPlayer />
       </View>
     </SafeAreaProvider>
   );

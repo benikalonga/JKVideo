@@ -23,6 +23,7 @@ import { getPlayUrl, getVideoDetail } from "../services/bilibili";
 import { coverImageUrl } from "../utils/imageUrl";
 import { useSettingsStore } from "../store/settingsStore";
 import { useTheme } from "../utils/theme";
+import { useLiveStore } from "../store/liveStore";
 import { formatCount, formatDuration } from "../utils/format";
 import type { VideoItem } from "../services/types";
 
@@ -57,6 +58,7 @@ export const BigVideoCard = React.memo(function BigVideoCard({
 }: Props) {
   const { width: SCREEN_W } = useWindowDimensions();
   const trafficSaving = useSettingsStore(s => s.trafficSaving);
+  const liveActive = useLiveStore(s => s.isActive);
   const theme = useTheme();
   const THUMB_H = SCREEN_W * 0.5625;
   const mediaDimensions = { width: SCREEN_W - 8, height: THUMB_H };
@@ -92,7 +94,7 @@ export const BigVideoCard = React.memo(function BigVideoCard({
 
   // Preload: fetch play URL on mount (before card is visible)
   useEffect(() => {
-    if (videoUrl || trafficSaving) return;
+    if (videoUrl || trafficSaving || liveActive) return;
     let cancelled = false;
     (async () => {
       try {
@@ -127,8 +129,7 @@ export const BigVideoCard = React.memo(function BigVideoCard({
   // Pause/resume based on visibility and scroll state
   useEffect(() => {
     if (!videoUrl) return;
-    if (!isVisible || trafficSaving) {
-      // Off-screen or traffic saving: pause, mute, show thumbnail
+    if (!isVisible || trafficSaving || liveActive) {
       setPaused(true);
       setMuted(true);
       Animated.timing(thumbOpacity, {
@@ -137,10 +138,8 @@ export const BigVideoCard = React.memo(function BigVideoCard({
         useNativeDriver: true,
       }).start();
     } else if (isScrolling) {
-      // Visible but scrolling: just pause (keep thumbnail hidden, keep mute state)
       setPaused(true);
     } else {
-      // Visible and not scrolling: play, fade out thumbnail
       setPaused(false);
       Animated.timing(thumbOpacity, {
         toValue: 0,
@@ -148,10 +147,10 @@ export const BigVideoCard = React.memo(function BigVideoCard({
         useNativeDriver: true,
       }).start();
     }
-  }, [isVisible, isScrolling, videoUrl, trafficSaving]);
+  }, [isVisible, isScrolling, videoUrl, trafficSaving, liveActive]);
 
   const handleVideoReady = () => {
-    if (!isVisible || isScrolling || trafficSaving) return;
+    if (!isVisible || isScrolling || trafficSaving || liveActive) return;
     setPaused(false);
     Animated.timing(thumbOpacity, {
       toValue: 0,
@@ -229,7 +228,7 @@ export const BigVideoCard = React.memo(function BigVideoCard({
       {/* Media area */}
       <View style={[mediaDimensions, { position: "relative" }]}>
         {/* Video player — rendered first so it sits behind the thumbnail */}
-        {videoUrl && (
+        {videoUrl && !liveActive && (
           <Video
             ref={videoRef}
             source={

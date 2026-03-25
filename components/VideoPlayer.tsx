@@ -32,9 +32,6 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, b
   };
 
   const handleExitFullscreen = async () => {
-    // 退出全屏：同步进度，竖屏一律暂停
-    portraitRef.current?.seek(lastTimeRef.current);
-    portraitRef.current?.setPaused(true);
     setFullscreen(false);
     if (Platform.OS !== 'web')
       await ScreenOrientation?.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
@@ -71,46 +68,49 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, b
 
   return (
     <>
-      {/* Portrait player: always mounted, force-paused while fullscreen is active */}
-      <NativeVideoPlayer
-        ref={portraitRef}
-        playData={playData}
-        qualities={qualities}
-        currentQn={currentQn}
-        onQualityChange={onQualityChange}
-        onFullscreen={handleEnterFullscreen}
-        bvid={bvid}
-        cid={cid}
-        isFullscreen={false}
-        forcePaused={fullscreen}
-        initialTime={lastTimeRef.current}
-        onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
-      />
+      {/* 竖屏和全屏互斥渲染，避免同时挂载两个视频解码器 */}
+      {!fullscreen && (
+        <NativeVideoPlayer
+          ref={portraitRef}
+          playData={playData}
+          qualities={qualities}
+          currentQn={currentQn}
+          onQualityChange={onQualityChange}
+          onFullscreen={handleEnterFullscreen}
+          bvid={bvid}
+          cid={cid}
+          isFullscreen={false}
+          initialTime={lastTimeRef.current}
+          onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
+        />
+      )}
 
-      <Modal visible={fullscreen} animationType="none" statusBarTranslucent>
-        <StatusBar hidden />
-        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={needsRotation
-            ? { width: height, height: width, transform: [{ rotate: '90deg' }] }
-            : { flex: 1, width: '100%' }
-          }>
-            <NativeVideoPlayer
-              playData={playData}
-              qualities={qualities}
-              currentQn={currentQn}
-              onQualityChange={onQualityChange}
-              onFullscreen={handleExitFullscreen}
-              bvid={bvid}
-              cid={cid}
-              danmakus={danmakus}
-              isFullscreen={true}
-              initialTime={lastTimeRef.current}
-              onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
-              style={needsRotation ? { width: height, height: width } : { flex: 1 }}
-            />
+      {fullscreen && (
+        <Modal visible animationType="none" statusBarTranslucent>
+          <StatusBar hidden />
+          <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={needsRotation
+              ? { width: height, height: width, transform: [{ rotate: '90deg' }] }
+              : { flex: 1, width: '100%' }
+            }>
+              <NativeVideoPlayer
+                playData={playData}
+                qualities={qualities}
+                currentQn={currentQn}
+                onQualityChange={onQualityChange}
+                onFullscreen={handleExitFullscreen}
+                bvid={bvid}
+                cid={cid}
+                danmakus={danmakus}
+                isFullscreen={true}
+                initialTime={lastTimeRef.current}
+                onTimeUpdate={(t) => { lastTimeRef.current = t; onTimeUpdate?.(t); }}
+                style={needsRotation ? { width: height, height: width } : { flex: 1 }}
+              />
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </>
   );
 }

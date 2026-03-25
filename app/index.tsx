@@ -422,7 +422,6 @@ export default function HomeScreen() {
             styles.header,
             {
               opacity: currentHeaderOpacity,
-              borderBottomColor: theme.border,
             },
           ]}
         >
@@ -507,8 +506,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#eee",
   },
   logo: {
     fontSize: 20,

@@ -5,6 +5,24 @@
 
 ---
 
+## [1.0.13] - 2026-03-25
+
+### 修复
+- **小窗 PanResponder 闭包过期**：`useRef(PanResponder.create(...))` 捕获初始 `roomId=0` / `bvid=""`，导致点击小窗跳转到错误页面；改用 `storeRef` 模式保持最新值
+- **直播小窗进入详情无限 loading**：`useLiveDetail` 使用 `cancelled` 闭包标志，effect cleanup 后 fetch 被静默丢弃；改用 `latestRoomId` ref 比对替代 cancelled 模式
+- **进入播放器页面小窗不关闭**：视频/直播详情页进入时通过 `useLayoutEffect` + `getState().clearLive()` 同步清除小窗，避免双播和资源竞争
+- **BigVideoCard 与直播小窗冲突**：首页 BigVideoCard 自动播放与直播小窗竞争解码器资源；小窗活跃时跳过 Video 渲染，仅显示封面图
+- **退出全屏视频暂停**：互斥渲染后竖屏播放器重新挂载，react-native-video seek 后不自动恢复播放；`onLoad` 中强制 `paused` 状态切换触发播放
+
+### 优化
+- **视频播放器单实例**：竖屏/全屏互斥渲染（`{!fullscreen && ...}` / `{fullscreen && ...}`），不再同时挂载两个 Video 解码器，减半 GPU/内存占用
+- **onProgress 节流**：`progressUpdateInterval` 从 250ms 调为 500ms，回调内增加 450ms 节流和 seeking 跳过，减少重渲染
+- **移除调试日志**：清理 NativeVideoPlayer 中遗留的 `console.log`
+- **下载页 UI 优化**：下载管理页交互和暗黑主题适配
+
+---
+
+
 ## [1.0.12] - 2026-03-25
 
 ### 新增

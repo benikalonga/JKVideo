@@ -242,7 +242,9 @@ export default function DanmakuList({
               <View style={liveStyles.medalTag}>
                 <Text style={liveStyles.medalName}>{item.medalName}</Text>
                 <View style={liveStyles.medalLvBox}>
-                  <Text style={liveStyles.medalLv}>{item.medalLevel}</Text>
+                  <Text style={[liveStyles.medalLv, { color: theme.text }]}>
+                    {item.medalLevel}
+                  </Text>
                 </View>
               </View>
             )}
@@ -275,7 +277,7 @@ export default function DanmakuList({
           ]}
         >
           <Text
-            style={[styles.bubbleText, { color: dotColor }]}
+            style={[styles.bubbleText, { color: theme.text }]}
             numberOfLines={3}
           >
             {item.text}
@@ -450,6 +452,7 @@ const liveStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
+    justifyContent: "space-between",
     paddingVertical: 5,
   },
   time: {
@@ -492,7 +495,6 @@ const liveStyles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   medalLvBox: {
-    backgroundColor: "#e891ab",
     paddingHorizontal: 3,
     height: "100%",
     justifyContent: "center",
