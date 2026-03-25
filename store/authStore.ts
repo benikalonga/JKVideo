@@ -24,13 +24,19 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (sessdata, uid, username) => {
     await setSecure('SESSDATA', sessdata);
-    await AsyncStorage.multiSet([
-      ['UID', uid],
-      ['USERNAME', username ?? ''],
-    ]);
     // Migrate: remove SESSDATA from AsyncStorage if it was there before
     await AsyncStorage.removeItem('SESSDATA').catch(() => {});
-    set({ sessdata, uid, username: username ?? null, isLoggedIn: true });
+    set({ sessdata, uid: uid || null, username: username || null, isLoggedIn: true });
+    // 登录后立即拉取用户信息，确保当前 session 头像可用（不依赖调用方 setProfile）
+    try {
+      const info = await getUserInfo();
+      await AsyncStorage.multiSet([
+        ['UID', String(info.mid)],
+        ['USERNAME', info.uname],
+        ['FACE', info.face],
+      ]);
+      set({ face: info.face, username: info.uname, uid: String(info.mid) });
+    } catch {}
   },
 
   logout: async () => {

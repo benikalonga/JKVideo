@@ -14,7 +14,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
-import { generateQRCode, pollQRCode, getUserInfo } from "../services/bilibili";
+import { generateQRCode, pollQRCode } from "../services/bilibili";
 import { useAuthStore } from "../store/authStore";
 import { useTheme } from "../utils/theme";
 
@@ -33,7 +33,6 @@ export function LoginModal({ visible, onClose }: Props) {
   >("loading");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const login = useAuthStore((s) => s.login);
-  const setProfile = useAuthStore((s) => s.setProfile);
   const theme = useTheme();
 
   // sheet 滑入动画
@@ -86,14 +85,11 @@ export function LoginModal({ visible, onClose }: Props) {
           clearInterval(pollRef.current!);
           try {
             await login(result.cookie, "", "");
-            if (cancelled) return;
-            setStatus("done");
-            const info = await getUserInfo();
-            if (!cancelled) setProfile(info.face, info.uname, String(info.mid));
           } catch {
             if (!cancelled) setStatus("error");
+            return;
           }
-          onClose();
+          if (!cancelled) onClose();
         }
       } catch {
         // Network error during poll — ignore, will retry next interval
