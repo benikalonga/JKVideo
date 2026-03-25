@@ -202,12 +202,12 @@ function DownloadRow({
         )}
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={isDownloading ? onDelete : onDelete}
+          onPress={onDelete}
         >
           <Ionicons
             name={isDownloading ? 'close-circle-outline' : 'trash-outline'}
             size={20}
-            color={isDownloading ? '#bbb' : '#bbb'}
+            color="#bbb"
           />
         </TouchableOpacity>
       </View>

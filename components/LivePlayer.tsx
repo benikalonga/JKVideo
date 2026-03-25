@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../utils/theme";
 
 interface Props {
   hlsUrl: string;
@@ -87,6 +88,7 @@ function NativeLivePlayer({
   onQualityChange?: (qn: number) => void;
 }) {
   const Video = require("react-native-video").default;
+  const theme = useTheme();
 
   const [showControls, setShowControls] = useState(true);
   const [paused, setPaused] = useState(false);
@@ -277,12 +279,12 @@ function NativeLivePlayer({
           onPress={() => setShowQualityPanel(false)}
         >
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={styles.qualityPanel}>
-              <Text style={styles.qualityPanelTitle}>清晰度</Text>
+            <View style={[styles.qualityPanel, { backgroundColor: theme.modalBg }]}>
+              <Text style={[styles.qualityPanelTitle, { color: theme.modalText }]}>清晰度</Text>
               {qualities.map((q) => (
                 <TouchableOpacity
                   key={q.qn}
-                  style={[styles.qualityItem]}
+                  style={[styles.qualityItem, { borderTopColor: theme.modalBorder }]}
                   onPress={() => {
                     onQualityChange?.(q.qn);
                     setShowQualityPanel(false);
@@ -291,6 +293,7 @@ function NativeLivePlayer({
                   <Text
                     style={[
                       styles.qualityItemText,
+                      { color: theme.modalTextSub },
                       currentQn === q.qn && styles.qualityItemTextActive,
                     ]}
                   >

@@ -41,7 +41,9 @@
       "expo-router",
       "react-native-video",
       "expo-screen-orientation",
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      "expo-secure-store",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true

@@ -334,6 +334,9 @@ export default function HomeScreen() {
             }
             onScroll={onScroll}
             scrollEventThrottle={16}
+            windowSize={7}
+            maxToRenderPerBatch={6}
+            removeClippedSubviews={true}
           />
         </View>
 
@@ -402,6 +405,9 @@ export default function HomeScreen() {
             }
             onScroll={onLiveScroll}
             scrollEventThrottle={16}
+            windowSize={7}
+            maxToRenderPerBatch={6}
+            removeClippedSubviews={true}
           />
         </View>
       </PagerView>

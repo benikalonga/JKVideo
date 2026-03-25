@@ -16,6 +16,7 @@ import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { generateQRCode, pollQRCode, getUserInfo } from "../services/bilibili";
 import { useAuthStore } from "../store/authStore";
+import { useTheme } from "../utils/theme";
 
 interface Props {
   visible: boolean;
@@ -33,6 +34,7 @@ export function LoginModal({ visible, onClose }: Props) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const login = useAuthStore((s) => s.login);
   const setProfile = useAuthStore((s) => s.setProfile);
+  const theme = useTheme();
 
   // sheet 滑入动画
   const slideY = useRef(new Animated.Value(300)).current;
@@ -69,27 +71,36 @@ export function LoginModal({ visible, onClose }: Props) {
 
   useEffect(() => {
     if (!qrKey || status !== "waiting") return;
+    let cancelled = false;
     pollRef.current = setInterval(async () => {
-      const result = await pollQRCode(qrKey);
-      if (result.code === 86038) {
-        setStatus("error");
-        clearInterval(pollRef.current!);
-      }
-      if (result.code === 86090) setStatus("scanned");
-      if (result.code === 0 && result.cookie) {
-        clearInterval(pollRef.current!);
-        try {
-          await login(result.cookie, "", "");
-          setStatus("done");
-          const info = await getUserInfo();
-          setProfile(info.face, info.uname, String(info.mid));
-        } catch {
+      if (cancelled) return;
+      try {
+        const result = await pollQRCode(qrKey);
+        if (cancelled) return;
+        if (result.code === 86038) {
           setStatus("error");
+          clearInterval(pollRef.current!);
         }
-        onClose();
+        if (result.code === 86090) setStatus("scanned");
+        if (result.code === 0 && result.cookie) {
+          clearInterval(pollRef.current!);
+          try {
+            await login(result.cookie, "", "");
+            if (cancelled) return;
+            setStatus("done");
+            const info = await getUserInfo();
+            if (!cancelled) setProfile(info.face, info.uname, String(info.mid));
+          } catch {
+            if (!cancelled) setStatus("error");
+          }
+          onClose();
+        }
+      } catch {
+        // Network error during poll — ignore, will retry next interval
       }
     }, 2000);
     return () => {
+      cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [qrKey, status]);
@@ -143,8 +154,8 @@ export function LoginModal({ visible, onClose }: Props) {
       <Animated.View
         style={[styles.sheetWrapper, { transform: [{ translateY: slideY }] }]}
       >
-        <View style={styles.sheet}>
-          <Text style={styles.title}>扫码登录</Text>
+        <View style={[styles.sheet, { backgroundColor: theme.sheetBg }]}>
+          <Text style={[styles.title, { color: theme.modalText }]}>扫码登录</Text>
           {status === "loading" && (
             <ActivityIndicator
               size="large"
@@ -172,7 +183,7 @@ export function LoginModal({ visible, onClose }: Props) {
                   )}
                 </TouchableOpacity>
               </View>
-              <Text style={styles.hint}>
+              <Text style={[styles.hint, { color: theme.modalTextSub }]}>
                 {status === "scanned"
                   ? "扫描成功，请在手机确认"
                   : "使用 B站 APP 扫一扫"}
@@ -180,7 +191,7 @@ export function LoginModal({ visible, onClose }: Props) {
             </>
           )}
           {status === "error" && (
-            <Text style={styles.hint}>二维码已过期，请关闭重试</Text>
+            <Text style={[styles.hint, { color: theme.modalTextSub }]}>二维码已过期，请关闭重试</Text>
           )}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeTxt}>关闭</Text>

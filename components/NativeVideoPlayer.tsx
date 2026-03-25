@@ -29,6 +29,7 @@ import type {
 import { buildDashMpdUri } from "../utils/dash";
 import { getVideoShot } from "../services/bilibili";
 import DanmakuOverlay from "./DanmakuOverlay";
+import { useTheme } from "../utils/theme";
 
 const BAR_H = 3;
 // 进度球尺寸
@@ -100,6 +101,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
   ) {
     const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
     const VIDEO_H = SCREEN_W * 0.5625;
+    const theme = useTheme();
 
     const [resolvedUrl, setResolvedUrl] = useState<string | undefined>();
     const isDash = !!playData?.dash;
@@ -569,12 +571,12 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             style={styles.modalOverlay}
             onPress={() => setShowQuality(false)}
           >
-            <View style={styles.qualityList}>
-              <Text style={styles.qualityTitle}>选择清晰度</Text>
+            <View style={[styles.qualityList, { backgroundColor: theme.modalBg }]}>
+              <Text style={[styles.qualityTitle, { color: theme.modalText }]}>选择清晰度</Text>
               {qualities.map((q) => (
                 <TouchableOpacity
                   key={q.qn}
-                  style={styles.qualityItem}
+                  style={[styles.qualityItem, { borderTopColor: theme.modalBorder }]}
                   onPress={() => {
                     setShowQuality(false);
                     onQualityChange(q.qn);
@@ -584,6 +586,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                   <Text
                     style={[
                       styles.qualityItemText,
+                      { color: theme.modalTextSub },
                       q.qn === currentQn && styles.qualityItemActive,
                     ]}
                   >

@@ -75,7 +75,7 @@ export default function VideoDetailScreen() {
 
   useEffect(() => {
     if (!video?.cid) return;
-    getDanmaku(video.cid).then(setDanmakus);
+    getDanmaku(video.cid).then(setDanmakus).catch(() => {});
   }, [video?.cid]);
 
   useEffect(() => {
@@ -197,7 +197,11 @@ export default function VideoDetailScreen() {
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
                 <>
-                  <View style={styles.upRow}>
+                  <TouchableOpacity
+                    style={styles.upRow}
+                    activeOpacity={0.85}
+                    onPress={() => router.push(`/creator/${video.owner.mid}` as any)}
+                  >
                     <Image
                       source={{ uri: proxyImageUrl(video.owner.face) }}
                       style={styles.avatar}
@@ -213,10 +217,10 @@ export default function VideoDetailScreen() {
                         </Text>
                       )}
                     </View>
-                    <TouchableOpacity style={styles.followBtn}>
-                      <Text style={styles.followTxt}>+ 关注</Text>
-                    </TouchableOpacity>
-                  </View>
+                    <View style={styles.followBtn}>
+                      <Text style={styles.followTxt}>查看主页</Text>
+                    </View>
+                  </TouchableOpacity>
                   <View
                     style={[
                       styles.titleSection,
@@ -661,6 +665,7 @@ const styles = StyleSheet.create({
   sortRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-end",
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 8,

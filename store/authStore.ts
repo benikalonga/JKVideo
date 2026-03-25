@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserInfo } from '../services/bilibili';
+import { getSecure, setSecure, deleteSecure } from '../utils/secureStorage';
 
 interface AuthState {
   sessdata: string | null;
@@ -22,21 +23,33 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: false,
 
   login: async (sessdata, uid, username) => {
+    await setSecure('SESSDATA', sessdata);
     await AsyncStorage.multiSet([
-      ['SESSDATA', sessdata],
       ['UID', uid],
       ['USERNAME', username ?? ''],
     ]);
+    // Migrate: remove SESSDATA from AsyncStorage if it was there before
+    await AsyncStorage.removeItem('SESSDATA').catch(() => {});
     set({ sessdata, uid, username: username ?? null, isLoggedIn: true });
   },
 
   logout: async () => {
-    await AsyncStorage.multiRemove(['SESSDATA', 'UID', 'USERNAME', 'FACE']);
+    await deleteSecure('SESSDATA');
+    await AsyncStorage.multiRemove(['UID', 'USERNAME', 'FACE']);
     set({ sessdata: null, uid: null, username: null, face: null, isLoggedIn: false });
   },
 
   restore: async () => {
-    const sessdata = await AsyncStorage.getItem('SESSDATA');
+    // Try SecureStore first, fallback to AsyncStorage for migration
+    let sessdata = await getSecure('SESSDATA');
+    if (!sessdata) {
+      sessdata = await AsyncStorage.getItem('SESSDATA');
+      if (sessdata) {
+        // Migrate from AsyncStorage to SecureStore
+        await setSecure('SESSDATA', sessdata);
+        await AsyncStorage.removeItem('SESSDATA');
+      }
+    }
     if (sessdata) {
       set({ sessdata, isLoggedIn: true });
       try {

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDownloadStore } from '../store/downloadStore';
+import { useTheme } from '../utils/theme';
 
 const SIZE = 32;   // 环外径
 const RING = 3;    // 环宽
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function DownloadProgressBtn({ onPress }: Props) {
+  const theme = useTheme();
   const tasks = useDownloadStore((s) => s.tasks);
   const downloading = Object.values(tasks).filter((t) => t.status === 'downloading');
   const hasDownloading = downloading.length > 0;
@@ -32,7 +34,7 @@ export function DownloadProgressBtn({ onPress }: Props) {
       <Ionicons
         name="cloud-download-outline"
         size={22}
-        color={hasDownloading ? BLUE : '#999'}
+        color={hasDownloading ? BLUE : theme.iconDefault}
       />
     </TouchableOpacity>
   );

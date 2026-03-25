@@ -167,3 +167,14 @@ export interface LiveStreamInfo {
   qn: number;
   qualities: { qn: number; desc: string }[];
 }
+
+export interface SearchSuggestItem {
+  value: string;
+  ref: number;
+}
+
+export interface HotSearchItem {
+  keyword: string;
+  show_name: string;
+  icon?: string;
+}

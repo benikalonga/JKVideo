@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDownload } from "../hooks/useDownload";
+import { useTheme } from "../utils/theme";
 
 interface Props {
   visible: boolean;
@@ -30,6 +31,7 @@ export function DownloadSheet({
   qualities,
 }: Props) {
   const { tasks, startDownload, taskKey } = useDownload();
+  const theme = useTheme();
   const slideAnim = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
@@ -55,21 +57,21 @@ export function DownloadSheet({
         onPress={onClose}
       />
       <Animated.View
-        style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
+        style={[styles.sheet, { backgroundColor: theme.sheetBg, transform: [{ translateY: slideAnim }] }]}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>下载视频</Text>
+          <Text style={[styles.headerTitle, { color: theme.modalText }]}>下载视频</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={20} color="#555" />
+            <Ionicons name="close" size={20} color={theme.modalTextSub} />
           </TouchableOpacity>
         </View>
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.modalBorder }]} />
         {qualities.map((q) => {
           const key = taskKey(bvid, q.qn);
           const task = tasks[key];
           return (
             <View key={q.qn} style={styles.row}>
-              <Text style={styles.qualityLabel}>{q.desc}</Text>
+              <Text style={[styles.qualityLabel, { color: theme.modalText }]}>{q.desc}</Text>
               <View style={styles.right}>
                 {!task && (
                   <TouchableOpacity

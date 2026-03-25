@@ -2,11 +2,11 @@ import React from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import type { VideoItem } from "../services/types";
 import { formatCount, formatDuration } from "../utils/format";
@@ -35,7 +35,9 @@ export const VideoCard = React.memo(function VideoCard({ item, onPress }: Props)
         <Image
           source={{ uri: coverImageUrl(item.pic, trafficSaving ? 'normal' : 'hd') }}
           style={[styles.thumb, { backgroundColor: theme.card }]}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
+          recyclingKey={item.bvid}
         />
         <View style={styles.meta}>
           <Ionicons name="play" size={11} color="#fff" />

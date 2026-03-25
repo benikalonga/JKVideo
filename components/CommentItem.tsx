@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { Comment } from '../services/types';
 import { formatTime } from '../utils/format';
@@ -17,10 +18,10 @@ export function CommentItem({ item }: Props) {
         <Text style={styles.username}>{item.member.uname}</Text>
         <Text style={[styles.message, { color: theme.text }]}>{item.content.message}</Text>
         <View style={styles.footer}>
-          <Text style={styles.time}>{formatTime(item.ctime)}</Text>
+          <Text style={[styles.time, { color: theme.textSub }]}>{formatTime(item.ctime)}</Text>
           <View style={styles.likeRow}>
-            <Ionicons name="thumbs-up-outline" size={12} color="#999" />
-            <Text style={styles.likeCount}>{item.like > 0 ? item.like : ''}</Text>
+            <Ionicons name="thumbs-up-outline" size={12} color={theme.textSub} />
+            <Text style={[styles.likeCount, { color: theme.textSub }]}>{item.like > 0 ? item.like : ''}</Text>
           </View>
         </View>
       </View>

@@ -9,13 +9,13 @@ import React, {
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
   Animated,
   PanResponder,
 } from "react-native";
+import { Image } from "expo-image";
 import Video, { VideoRef } from "react-native-video";
 import { Ionicons } from "@expo/vector-icons";
 import { buildDashMpdUri } from "../utils/dash";
@@ -103,7 +103,11 @@ export const BigVideoCard = React.memo(function BigVideoCard({
           const detail = await getVideoDetail(item.bvid);
           cid = detail.cid ?? detail.pages?.[0]?.cid;
         }
-        if (!cid || cancelled) return;
+        if (!cid) {
+          console.warn('BigVideoCard: no cid available for', item.bvid);
+          return;
+        }
+        if (cancelled) return;
         const playData = await getPlayUrl(item.bvid, cid, 16);
         if (cancelled) return;
         if (playData.dash) {
@@ -263,7 +267,8 @@ export const BigVideoCard = React.memo(function BigVideoCard({
           <Image
             source={{ uri: coverImageUrl(item.pic, trafficSaving ? 'normal' : 'hd') }}
             style={mediaDimensions}
-            resizeMode="cover"
+            contentFit="cover"
+            recyclingKey={item.bvid}
           />
         </Animated.View>
 

@@ -24,7 +24,6 @@ type Tab = "intro" | "danmaku";
 
 export default function LiveDetailScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
-  console.log("LiveDetailScreen params:", { roomId });
   const router = useRouter();
   const theme = useTheme();
   const id = parseInt(roomId ?? "0", 10);

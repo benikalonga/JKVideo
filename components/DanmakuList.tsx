@@ -36,6 +36,24 @@ const FAST_DRIP_INTERVAL = 100;
 const QUEUE_FAST_THRESHOLD = 50;
 const SEEK_THRESHOLD = 2;
 
+// ─── Animated.Value 对象池，减少频繁创建/GC ──────────────────────────────────
+const animPool: Animated.Value[] = [];
+const POOL_MAX = 64;
+
+function acquireAnim(): Animated.Value {
+  const v = animPool.pop();
+  if (v) { v.setValue(0); return v; }
+  return new Animated.Value(0);
+}
+
+function releaseAnims(items: DisplayedDanmaku[]) {
+  for (const item of items) {
+    if (animPool.length < POOL_MAX) {
+      animPool.push(item._fadeAnim);
+    }
+  }
+}
+
 // ─── 舰长等级 ───────────────────────────────────────────────────────────────────
 const GUARD_LABELS: Record<number, { text: string; color: string }> = {
   1: { text: "总督", color: "#E13979" },
@@ -153,7 +171,7 @@ export default function DanmakuList({
         if (queueRef.current.length === 0) return;
 
         const item = queueRef.current.shift()!;
-        const fadeAnim = new Animated.Value(0);
+        const fadeAnim = acquireAnim();
         const displayed: DisplayedDanmaku = {
           ...item,
           _key: keyCounterRef.current++,
@@ -168,9 +186,13 @@ export default function DanmakuList({
 
         setDisplayedItems((prev) => {
           const next = [...prev, displayed];
-          return next.length > maxItems
-            ? next.slice(-Math.floor(maxItems / 2))
-            : next;
+          if (next.length > maxItems) {
+            const trimCount = next.length - Math.floor(maxItems / 2);
+            const trimmed = next.slice(trimCount);
+            releaseAnims(next.slice(0, trimCount));
+            return trimmed;
+          }
+          return next;
         });
 
         if (isAtBottomRef.current) {
