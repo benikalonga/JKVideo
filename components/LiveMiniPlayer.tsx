@@ -35,7 +35,14 @@ export function LiveMiniPlayer() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      // 不在 start 阶段抢夺，让 TouchableOpacity 的点击正常触发
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      // 有实际位移时，从子组件夺回响应权（capture 阶段，优先于子组件）
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 3 || Math.abs(dy) > 3,
+      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
+        Math.abs(dx) > 3 || Math.abs(dy) > 3,
       onPanResponderGrant: () => {
         pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
         pan.setValue({ x: 0, y: 0 });
@@ -51,12 +58,10 @@ export function LiveMiniPlayer() {
         const curY = (pan.y as any)._value;
 
         // 吸附到左边缘或右边缘（取最近的一侧）
-        // container 默认 right:12，pan.x=0 为右侧，-(sw-MINI_W-24) 为左侧贴边
         const snapRight = 0;
         const snapLeft = -(sw - MINI_W - 24);
         const snapX = curX < snapLeft / 2 ? snapLeft : snapRight;
 
-        // Y 轴仅做越界回弹，不吸附
         const clampedY = Math.max(-sh + MINI_H + 60, Math.min(60, curY));
 
         Animated.spring(pan, {
@@ -65,6 +70,9 @@ export function LiveMiniPlayer() {
           tension: 120,
           friction: 10,
         }).start();
+      },
+      onPanResponderTerminate: () => {
+        pan.flattenOffset();
       },
     }),
   ).current;

@@ -20,7 +20,12 @@ export function MiniPlayer() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 3 || Math.abs(dy) > 3,
+      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
+        Math.abs(dx) > 3 || Math.abs(dy) > 3,
       onPanResponderGrant: () => {
         pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
         pan.setValue({ x: 0, y: 0 });
@@ -32,7 +37,6 @@ export function MiniPlayer() {
         const curX = (pan.x as any)._value;
         const curY = (pan.y as any)._value;
 
-        // 吸附到左边缘或右边缘（取最近的一侧）
         const snapRight = 0;
         const snapLeft = -(sw - MINI_W - 24);
         const snapX = curX < snapLeft / 2 ? snapLeft : snapRight;
@@ -45,6 +49,9 @@ export function MiniPlayer() {
           tension: 120,
           friction: 10,
         }).start();
+      },
+      onPanResponderTerminate: () => {
+        pan.flattenOffset();
       },
     })
   ).current;
