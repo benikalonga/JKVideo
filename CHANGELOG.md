@@ -5,6 +5,26 @@
 
 ---
 
+## [1.0.15] - 2026-03-26
+
+### 新增
+- **UP主主页**：视频详情页点击 UP 主名称可进入创作者主页（`/creator/[mid]`），展示头像、简介、粉丝数、投稿数及视频列表（分页加载）
+- **缓存管理**：设置页新增「存储」区块，实时显示缓存大小，支持一键清除 expo-image 磁盘/内存缓存及通用缓存目录
+
+### 优化
+- **性能**：封面图全面改用 `expo-image`（内存/磁盘两级缓存，`recyclingKey` 复用 UI 树节点）；FlatList 开启 `removeClippedSubviews`；`buvid3` 改为懒初始化，首屏加载快约 30ms
+- **搜索体验**：搜索结果列表高亮命中词（HTML 标签过滤）；空态增加图标+文案；防抖 300ms 减少无效请求
+- **深色模式**：修补设置页遗漏的硬编码颜色，外观/流量切换按钮、退出登录按钮全部跟随主题
+- **登录安全**：SESSDATA 迁移至 `expo-secure-store` 加密存储（Web 降级 AsyncStorage）
+
+### 修复
+- **登录后头像不更新**：将 `getUserInfo()` 移入 `authStore.login()`，延迟 1s 后台执行，避免触发 B 站新会话并发风控，登录完成后头像立即刷新
+- **getFollowedLiveRooms 登录后返回空**：`login()` 内同步调用 `getUserInfo` 导致 `FollowedLiveStrip` 并发请求被 B 站风控拦截；改为 `setTimeout(1000)` 非阻塞后台拉取修复
+- **getUploaderVideos 无数据**：`/x/space/wbi/arc/search` 需要 WBI 签名，补全 `getWbiKeys()` + `signWbi()` 调用
+- **getFollowedLiveRooms 字段兼容**：新增 `code !== 0` 校验及 `list ?? rooms ?? []` 兼容不同 API 版本返回结构
+
+---
+
 ## [1.0.13] - 2026-03-25
 
 ### 修复
