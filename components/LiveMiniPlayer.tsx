@@ -49,14 +49,22 @@ export function LiveMiniPlayer() {
         const { width: sw, height: sh } = Dimensions.get('window');
         const curX = (pan.x as any)._value;
         const curY = (pan.y as any)._value;
-        const clampedX = Math.max(-sw + MINI_W + 12, Math.min(12, curX));
+
+        // 吸附到左边缘或右边缘（取最近的一侧）
+        // container 默认 right:12，pan.x=0 为右侧，-(sw-MINI_W-24) 为左侧贴边
+        const snapRight = 0;
+        const snapLeft = -(sw - MINI_W - 24);
+        const snapX = curX < snapLeft / 2 ? snapLeft : snapRight;
+
+        // Y 轴仅做越界回弹，不吸附
         const clampedY = Math.max(-sh + MINI_H + 60, Math.min(60, curY));
-        if (curX !== clampedX || curY !== clampedY) {
-          Animated.spring(pan, {
-            toValue: { x: clampedX, y: clampedY },
-            useNativeDriver: false,
-          }).start();
-        }
+
+        Animated.spring(pan, {
+          toValue: { x: snapX, y: clampedY },
+          useNativeDriver: false,
+          tension: 120,
+          friction: 10,
+        }).start();
       },
     }),
   ).current;
