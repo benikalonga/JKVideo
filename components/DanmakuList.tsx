@@ -222,6 +222,7 @@ export default function DanmakuList({
             { opacity: item._fadeAnim, borderBottomColor: theme.border },
           ]}
         >
+           {timeStr ? <Text style={liveStyles.time}>{timeStr}</Text> : null}
           <View style={liveStyles.msgBody}>
             {guard && (
               <View
@@ -256,7 +257,7 @@ export default function DanmakuList({
               {item.text}
             </Text>
           </View>
-          {timeStr ? <Text style={liveStyles.time}>{timeStr}</Text> : null}
+         
         </Animated.View>
       );
     },
@@ -493,7 +494,6 @@ const liveStyles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   medalLvBox: {
-    backgroundColor: "#e891ab",
     paddingHorizontal: 3,
     height: "100%",
     justifyContent: "center",
