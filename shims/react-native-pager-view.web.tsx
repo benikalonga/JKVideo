@@ -1,7 +1,6 @@
 /**
  * Web shim for react-native-pager-view.
- * eas update exports for web; this replaces the native-only module
- * with a simple View-based container that renders the first child only.
+ * Supports setPage/setPageWithoutAnimation via imperative handle.
  */
 import React from 'react';
 import { View, type ViewStyle } from 'react-native';
@@ -11,16 +10,35 @@ interface PagerViewProps {
   style?: ViewStyle;
   initialPage?: number;
   scrollEnabled?: boolean;
-  onPageSelected?: (e: any) => void;
+  onPageSelected?: (e: { nativeEvent: { position: number } }) => void;
+  onPageScrollStateChanged?: (e: any) => void;
   [key: string]: any;
 }
 
-const PagerView = React.forwardRef<View, PagerViewProps>(
-  ({ children, style, initialPage = 0 }, ref) => {
+export interface PagerViewHandle {
+  setPage: (page: number) => void;
+  setPageWithoutAnimation: (page: number) => void;
+}
+
+const PagerView = React.forwardRef<PagerViewHandle, PagerViewProps>(
+  ({ children, style, initialPage = 0, onPageSelected }, ref) => {
+    const [currentPage, setCurrentPage] = React.useState(initialPage);
     const pages = React.Children.toArray(children);
+
+    React.useImperativeHandle(ref, () => ({
+      setPage(page: number) {
+        setCurrentPage(page);
+        onPageSelected?.({ nativeEvent: { position: page } });
+      },
+      setPageWithoutAnimation(page: number) {
+        setCurrentPage(page);
+        onPageSelected?.({ nativeEvent: { position: page } });
+      },
+    }));
+
     return (
-      <View ref={ref} style={[{ flex: 1 }, style]}>
-        {pages[initialPage] ?? pages[0] ?? null}
+      <View style={[{ flex: 1 }, style]}>
+        {pages[currentPage] ?? pages[0] ?? null}
       </View>
     );
   },
