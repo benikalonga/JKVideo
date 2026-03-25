@@ -27,13 +27,13 @@
 <table>
   <tr>
     <td align="center"><img src="public/p1.jpg" width="180"/><br/><sub>首页热门 · 内联视频 · 穿插直播</sub></td>
-    <td align="center"><img src="public/p2.jpg" width="180"/><br/><sub>视频详情 · 简介 · 推荐视频</sub></td>
-    <td align="center"><img src="public/p3.jpg" width="180"/><br/><sub>竖屏播放 · 4K HDR · 多清晰度</sub></td>
+    <td align="center"><img src="public/p2.jpg" width="180"/><br/><sub>首页直播 · 关注房间· 分区筛选</sub></td>
+    <td align="center"><img src="public/p3.jpg" width="180"/><br/><sub>直播详情 · 4K HDR · 多清晰度</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="public/p4.jpg" width="180"/><br/><sub>下载管理 · 局域网分享二维码</sub></td>
-    <td align="center"><img src="public/p5.jpg" width="180"/><br/><sub>直播 Tab · 关注主播在线 · 分区筛选</sub></td>
-    <td align="center"><img src="public/p6.jpg" width="180"/><br/><sub>直播详情 · 实时弹幕 · 舰长标记</sub></td>
+    <td align="center"><img src="public/p5.jpg" width="180"/><br/><sub>直播详情 ·实时弹幕 · 清晰度切换</sub></td>
+    <td align="center"><img src="public/p6.jpg" width="180"/><br/><sub>视频弹幕 · 同步加载</sub></td>
   </tr>
 </table>
 
