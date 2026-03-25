@@ -37,14 +37,15 @@ export default function LiveDetailScreen() {
   const qualities = stream?.qualities ?? [];
   const currentQn = stream?.qn ?? 0;
 
-  const { roomId: miniRoomId, setLive, clearLive } = useLiveStore();
+  const { setLive, clearLive } = useLiveStore();
 
   // 进入该直播间时，若小窗正在播放同一房间，清除小窗避免双播
+  // 仅在挂载时运行一次（用 getState 读值，不创建响应式依赖）
   useEffect(() => {
-    if (miniRoomId === id) {
+    if (useLiveStore.getState().roomId === id) {
       clearLive();
     }
-  }, [id, miniRoomId]);
+  }, []);
 
   const actualRoomId = room?.roomid ?? id;
   const { danmakus, giftCounts } = useLiveDanmaku(isLive ? actualRoomId : 0);
