@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useTheme } from '../utils/theme';
 import { useCheckUpdate } from '../hooks/useCheckUpdate';
+import { getImageCacheSize, clearImageCache, formatBytes } from '../utils/cache';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -14,6 +15,34 @@ export default function SettingsScreen() {
   const { darkMode, setDarkMode, trafficSaving, setTrafficSaving } = useSettingsStore();
   const theme = useTheme();
   const { currentVersion, isChecking, downloadProgress, checkUpdate } = useCheckUpdate();
+  const [cacheSize, setCacheSize] = useState<number | null>(null);
+  const [clearingCache, setClearingCache] = useState(false);
+
+  const refreshCacheSize = useCallback(async () => {
+    const size = await getImageCacheSize();
+    setCacheSize(size);
+  }, []);
+
+  useEffect(() => {
+    refreshCacheSize();
+  }, []);
+
+  const handleClearCache = async () => {
+    Alert.alert('清除缓存', '确定要清除所有缓存吗？', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '清除',
+        style: 'destructive',
+        onPress: async () => {
+          setClearingCache(true);
+          await clearImageCache();
+          setClearingCache(false);
+          setCacheSize(0);
+          Alert.alert('已完成', '缓存已清除');
+        },
+      },
+    ]);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -63,18 +92,18 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionLabel, { color: theme.textSub }]}>外观</Text>
         <View style={styles.optionRow}>
           <TouchableOpacity
-            style={[styles.option, !darkMode && styles.optionActive]}
+            style={[styles.option, { backgroundColor: theme.inputBg }, !darkMode && styles.optionActive]}
             onPress={() => setDarkMode(false)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, !darkMode && styles.optionTextActive]}>浅色</Text>
+            <Text style={[styles.optionText, { color: theme.text }, !darkMode && styles.optionTextActive]}>浅色</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.option, darkMode && styles.optionActive]}
+            style={[styles.option, { backgroundColor: theme.inputBg }, darkMode && styles.optionActive]}
             onPress={() => setDarkMode(true)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, darkMode && styles.optionTextActive]}>深色</Text>
+            <Text style={[styles.optionText, { color: theme.text }, darkMode && styles.optionTextActive]}>深色</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -83,18 +112,18 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionLabel, { color: theme.textSub }]}>流量</Text>
         <View style={styles.optionRow}>
           <TouchableOpacity
-            style={[styles.option, !trafficSaving && styles.optionActive]}
+            style={[styles.option, { backgroundColor: theme.inputBg }, !trafficSaving && styles.optionActive]}
             onPress={() => setTrafficSaving(false)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, !trafficSaving && styles.optionTextActive]}>标准</Text>
+            <Text style={[styles.optionText, { color: theme.text }, !trafficSaving && styles.optionTextActive]}>标准</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.option, trafficSaving && styles.optionActive]}
+            style={[styles.option, { backgroundColor: theme.inputBg }, trafficSaving && styles.optionActive]}
             onPress={() => setTrafficSaving(true)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, trafficSaving && styles.optionTextActive]}>节流</Text>
+            <Text style={[styles.optionText, { color: theme.text }, trafficSaving && styles.optionTextActive]}>节流</Text>
           </TouchableOpacity>
         </View>
         {trafficSaving && (
@@ -104,9 +133,32 @@ export default function SettingsScreen() {
         )}
       </View>
 
+      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>存储</Text>
+        <View style={styles.cacheRow}>
+          <View>
+            <Text style={[styles.cacheLabel, { color: theme.text }]}>缓存大小</Text>
+            <Text style={[styles.cacheValue, { color: theme.textSub }]}>
+              {cacheSize === null ? '计算中...' : formatBytes(cacheSize)}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.clearBtn, clearingCache && { opacity: 0.5 }]}
+            onPress={handleClearCache}
+            disabled={clearingCache}
+            activeOpacity={0.7}
+          >
+            {clearingCache
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.clearBtnText}>清除缓存</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {isLoggedIn && (
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Text style={styles.logoutText}>退出登录</Text>
+        <TouchableOpacity style={[styles.logoutBtn, { borderColor: theme.danger }]} onPress={handleLogout} activeOpacity={0.8}>
+          <Text style={[styles.logoutText, { color: theme.danger }]}>退出登录</Text>
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -143,10 +195,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 16,
-    backgroundColor: '#f0f0f0',
   },
   optionActive: { backgroundColor: '#00AEEC' },
-  optionText: { fontSize: 13, color: '#333', fontWeight: '500' },
+  optionText: { fontSize: 13, fontWeight: '500' },
   optionTextActive: { color: '#fff', fontWeight: '600' },
   hint: { fontSize: 12, marginTop: 8 },
   versionRow: {
@@ -162,13 +213,28 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   updateBtnText: { fontSize: 14, color: '#00AEEC', fontWeight: '600' },
+  cacheRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cacheLabel: { fontSize: 14 },
+  cacheValue: { fontSize: 12, marginTop: 2 },
+  clearBtn: {
+    backgroundColor: '#00AEEC',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  clearBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   logoutBtn: {
     margin: 24,
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ff4757',
     alignItems: 'center',
   },
-  logoutText: { fontSize: 15, color: '#ff4757', fontWeight: '600' },
+  logoutText: { fontSize: 15, fontWeight: '600' },
 });

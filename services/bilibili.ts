@@ -2,9 +2,10 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import pako from 'pako';
-import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo, VideoShotData, DanmakuItem, LiveRoom, LiveRoomDetail, LiveAnchorInfo, LiveStreamInfo } from './types';
+import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo, VideoShotData, DanmakuItem, LiveRoom, LiveRoomDetail, LiveAnchorInfo, LiveStreamInfo, SearchSuggestItem, HotSearchItem } from './types';
 import { signWbi } from '../utils/wbi';
 import { parseDanmakuXml } from '../utils/danmaku';
+import { getSecure } from '../utils/secureStorage';
 
 const isWeb = Platform.OS === 'web';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -46,7 +47,7 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   const [sessdata, buvid3] = await Promise.all([
-    AsyncStorage.getItem('SESSDATA'),
+    getSecure('SESSDATA'),
     getBuvid3(),
   ]);
   if (isWeb) {
@@ -60,6 +61,23 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// ─── Request deduplication ──────────────────────────────────────────────────
+// Prevents identical concurrent requests (same URL + params) from hitting the network twice.
+const inflightRequests = new Map<string, Promise<any>>();
+
+function dedupeKey(url: string, params?: Record<string, any>): string {
+  return params ? `${url}?${JSON.stringify(params)}` : url;
+}
+
+/** Wraps an async API call so that concurrent calls with the same key share one promise. */
+function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = inflightRequests.get(key);
+  if (existing) return existing as Promise<T>;
+  const promise = fn().finally(() => { inflightRequests.delete(key); });
+  inflightRequests.set(key, promise);
+  return promise;
+}
 
 // WBI key cache (rotates ~daily)
 let wbiKeys: { imgKey: string; subKey: string } | null = null;
@@ -109,9 +127,11 @@ export async function getPopularVideos(pn = 1): Promise<VideoItem[]> {
   return res.data.data.list as VideoItem[];
 }
 
-export async function getVideoDetail(bvid: string): Promise<VideoItem> {
-  const res = await api.get('/x/web-interface/view', { params: { bvid } });
-  return res.data.data as VideoItem;
+export function getVideoDetail(bvid: string): Promise<VideoItem> {
+  return dedupe(dedupeKey('/x/web-interface/view', { bvid }), async () => {
+    const res = await api.get('/x/web-interface/view', { params: { bvid } });
+    return res.data.data as VideoItem;
+  });
 }
 
 export async function getVideoRelated(bvid: string): Promise<VideoItem[]> {
@@ -120,15 +140,17 @@ export async function getVideoRelated(bvid: string): Promise<VideoItem[]> {
   return items as VideoItem[];
 }
 
-export async function getPlayUrl(bvid: string, cid: number, qn = 64): Promise<PlayUrlResponse> {
+export function getPlayUrl(bvid: string, cid: number, qn = 64): Promise<PlayUrlResponse> {
   const isAndroid = Platform.OS === 'android';
   // 1488 = 16(DASH)|64(HDR)|128(4K)|256(杜比全景声)|1024(杜比视界)
   const FNVAL_ANDROID = 16 | 64 | 128 | 256 | 1024;
   const params = isAndroid
     ? { bvid, cid, qn, fnval: FNVAL_ANDROID, fourk: 1 }
     : { bvid, cid, qn, fnval: 0, platform: 'html5', fourk: 1 };
-  const res = await api.get('/x/player/playurl', { params });
-  return res.data.data as PlayUrlResponse;
+  return dedupe(dedupeKey('/x/player/playurl', params), async () => {
+    const res = await api.get('/x/player/playurl', { params });
+    return res.data.data as PlayUrlResponse;
+  });
 }
 
 export async function getPlayUrlForDownload(
@@ -156,6 +178,47 @@ export async function getUploaderStat(mid: number): Promise<{ follower: number; 
     follower: data.follower ?? 0,
     archiveCount: data.archive_count ?? 0,
   };
+}
+
+export async function getUploaderInfo(mid: number): Promise<{ name: string; face: string; sign: string; follower: number; archiveCount: number }> {
+  const res = await api.get('/x/web-interface/card', { params: { mid } });
+  const data = res.data.data ?? {};
+  return {
+    name: data.card?.name ?? '',
+    face: data.card?.face ?? '',
+    sign: data.card?.sign ?? '',
+    follower: data.follower ?? 0,
+    archiveCount: data.archive_count ?? 0,
+  };
+}
+
+export async function getUploaderVideos(mid: number, pn = 1, ps = 20): Promise<{ videos: VideoItem[]; total: number }> {
+  const res = await api.get('/x/space/wbi/arc/search', {
+    params: { mid, pn, ps, order: 'pubdate', platform: 'web' },
+  });
+  const vlist: any[] = res.data?.data?.list?.vlist ?? [];
+  const total: number = res.data?.data?.page?.count ?? 0;
+  const videos: VideoItem[] = vlist.map((v: any) => ({
+    bvid: v.bvid,
+    aid: v.aid ?? 0,
+    title: v.title,
+    pic: v.pic ? (v.pic.startsWith('//') ? `https:${v.pic}` : v.pic) : '',
+    owner: { mid, name: v.author ?? '', face: '' },
+    stat: {
+      view: v.play ?? 0,
+      danmaku: v.video_review ?? 0,
+      reply: v.comment ?? 0,
+      like: 0,
+      coin: 0,
+      favorite: 0,
+    },
+    duration: v.length ? parseDuration(v.length) : 0,
+    desc: v.description ?? '',
+    cid: v.cid ?? 0,
+    pages: [],
+    ugc_season: undefined,
+  }));
+  return { videos, total };
 }
 
 export async function getUserInfo(): Promise<{ face: string; uname: string; mid: number }> {
@@ -341,10 +404,12 @@ function parseDuration(s: string): number {
   return parts.length === 2 ? parts[0] * 60 + parts[1] : parts[0] * 3600 + parts[1] * 60 + parts[2];
 }
 
-export async function searchVideos(keyword: string, page = 1): Promise<VideoItem[]> {
+export async function searchVideos(keyword: string, page = 1, order = ''): Promise<VideoItem[]> {
   const { imgKey, subKey } = await getWbiKeys();
+  const params: Record<string, any> = { keyword, search_type: 'video', page, page_size: 20 };
+  if (order) params.order = order;
   const signed = signWbi(
-    { keyword, search_type: 'video', page, page_size: 20 },
+    params,
     imgKey,
     subKey,
   );
@@ -385,7 +450,6 @@ export async function getLiveDanmakuHistory(roomId: number): Promise<{
   const room: any[] = res.data?.data?.room ?? [];
   const admin: any[] = res.data?.data?.admin ?? [];
   const adminMsgs = admin.map((a: any) => a.text ?? '').filter(Boolean);
-  console.log(adminMsgs,'adminMsgs')
   const danmakus = room.map((m: any) => ({
     time: 0,
     mode: 1 as const,
@@ -459,4 +523,32 @@ export async function getFollowedLiveRooms(): Promise<LiveRoom[]> {
     area_name: r.area_v2_name ?? '',
     parent_area_name: r.area_v2_parent_name ?? '',
   }));
+}
+
+export async function getSearchSuggest(term: string): Promise<SearchSuggestItem[]> {
+  try {
+    const res = await api.get('/x/web-interface/search/suggest', {
+      params: { term, main_ver: 'v1', highlight: '' },
+    });
+    const tags: any[] = res.data?.result?.tag ?? [];
+    return tags.map((t: any) => ({ value: t.value ?? '', ref: t.ref ?? 0 }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getHotSearch(): Promise<HotSearchItem[]> {
+  try {
+    const res = await api.get('/x/web-interface/wbi/search/square', {
+      params: { limit: 10 },
+    });
+    const trending: any[] = res.data?.data?.trending?.list ?? [];
+    return trending.map((t: any) => ({
+      keyword: t.keyword ?? '',
+      show_name: t.show_name ?? t.keyword ?? '',
+      icon: t.icon,
+    }));
+  } catch {
+    return [];
+  }
 }
