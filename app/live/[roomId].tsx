@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import DanmakuList from "../../components/DanmakuList";
 import { formatCount } from "../../utils/format";
 import { proxyImageUrl } from "../../utils/imageUrl";
 import { useTheme } from "../../utils/theme";
+import { useLiveStore } from "../../store/liveStore";
 
 type Tab = "intro" | "danmaku";
 
@@ -36,6 +37,15 @@ export default function LiveDetailScreen() {
   const qualities = stream?.qualities ?? [];
   const currentQn = stream?.qn ?? 0;
 
+  const { roomId: miniRoomId, setLive, clearLive } = useLiveStore();
+
+  // 进入该直播间时，若小窗正在播放同一房间，清除小窗避免双播
+  useEffect(() => {
+    if (miniRoomId === id) {
+      clearLive();
+    }
+  }, [id, miniRoomId]);
+
   const actualRoomId = room?.roomid ?? id;
   const { danmakus, giftCounts } = useLiveDanmaku(isLive ? actualRoomId : 0);
 
@@ -49,6 +59,19 @@ export default function LiveDetailScreen() {
         <Text style={[styles.topTitle, { color: theme.text }]} numberOfLines={1}>
           {room?.title ?? "直播间"}
         </Text>
+        {isLive && hlsUrl ? (
+          <TouchableOpacity
+            style={styles.pipBtn}
+            onPress={() => {
+              setLive(id, room?.title ?? '', room?.keyframe ?? '', hlsUrl);
+              router.back();
+            }}
+          >
+            <Ionicons name="browsers-outline" size={22} color={theme.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.pipBtn} />
+        )}
       </View>
 
       {/* Player */}
@@ -177,6 +200,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { padding: 4 },
+  pipBtn: { padding: 4, width: 32, alignItems: 'center' },
   topTitle: {
     flex: 1,
     fontSize: 15,
