@@ -193,9 +193,9 @@ export async function getUploaderInfo(mid: number): Promise<{ name: string; face
 }
 
 export async function getUploaderVideos(mid: number, pn = 1, ps = 20): Promise<{ videos: VideoItem[]; total: number }> {
-  const res = await api.get('/x/space/wbi/arc/search', {
-    params: { mid, pn, ps, order: 'pubdate', platform: 'web' },
-  });
+  const { imgKey, subKey } = await getWbiKeys();
+  const signed = signWbi({ mid, pn, ps, order: 'pubdate', platform: 'web' }, imgKey, subKey);
+  const res = await api.get('/x/space/wbi/arc/search', { params: signed });
   const vlist: any[] = res.data?.data?.list?.vlist ?? [];
   const total: number = res.data?.data?.page?.count ?? 0;
   const videos: VideoItem[] = vlist.map((v: any) => ({
