@@ -27,16 +27,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Migrate: remove SESSDATA from AsyncStorage if it was there before
     await AsyncStorage.removeItem('SESSDATA').catch(() => {});
     set({ sessdata, uid: uid || null, username: username || null, isLoggedIn: true });
-    // 登录后立即拉取用户信息，确保当前 session 头像可用（不依赖调用方 setProfile）
-    try {
-      const info = await getUserInfo();
-      await AsyncStorage.multiSet([
-        ['UID', String(info.mid)],
-        ['USERNAME', info.uname],
-        ['FACE', info.face],
-      ]);
-      set({ face: info.face, username: info.uname, uid: String(info.mid) });
-    } catch {}
+    // 延迟 1s 后台拉取头像，避免与登录后立即触发的其他请求（如 getFollowedLiveRooms）并发
+    setTimeout(() => {
+      getUserInfo().then(async (info) => {
+        await AsyncStorage.multiSet([
+          ['UID', String(info.mid)],
+          ['USERNAME', info.uname],
+          ['FACE', info.face],
+        ]).catch(() => {});
+        set({ face: info.face, username: info.uname, uid: String(info.mid) });
+      }).catch(() => {});
+    }, 1000);
   },
 
   logout: async () => {
