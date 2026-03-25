@@ -49,7 +49,10 @@ export default function VideoDetailScreen() {
   const [danmakus, setDanmakus] = useState<DanmakuItem[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [showDownload, setShowDownload] = useState(false);
-  const [uploaderStat, setUploaderStat] = useState<{ follower: number; archiveCount: number } | null>(null);
+  const [uploaderStat, setUploaderStat] = useState<{
+    follower: number;
+    archiveCount: number;
+  } | null>(null);
   const {
     videos: relatedVideos,
     loading: relatedLoading,
@@ -71,7 +74,9 @@ export default function VideoDetailScreen() {
 
   useEffect(() => {
     if (!video?.owner?.mid) return;
-    getUploaderStat(video.owner.mid).then(setUploaderStat).catch(() => {});
+    getUploaderStat(video.owner.mid)
+      .then(setUploaderStat)
+      .catch(() => {});
   }, [video?.owner?.mid]);
 
   return (
@@ -197,7 +202,8 @@ export default function VideoDetailScreen() {
                       </Text>
                       {uploaderStat && (
                         <Text style={styles.upStat}>
-                          {formatCount(uploaderStat.follower)}粉丝 · {formatCount(uploaderStat.archiveCount)}视频
+                          {formatCount(uploaderStat.follower)}粉丝 ·{" "}
+                          {formatCount(uploaderStat.archiveCount)}视频
                         </Text>
                       )}
                     </View>
@@ -465,7 +471,7 @@ function SeasonSection({
             <TouchableOpacity
               style={[
                 styles.epCard,
-                { backgroundColor: theme.card },
+                { backgroundColor: theme.card, borderColor: theme.border },
                 isCurrent && styles.epCardActive,
               ]}
               onPress={() => !isCurrent && onEpisodePress(ep.bvid)}
@@ -564,10 +570,10 @@ const styles = StyleSheet.create({
     width: 120,
     borderRadius: 6,
     overflow: "hidden",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: "transparent",
   },
-  epCardActive: { borderColor: "#00AEEC" },
+  epCardActive: { borderColor: "#00AEEC", borderWidth: 1.5 },
   epThumb: { width: 120, height: 68 },
   epNum: { fontSize: 11, color: "#999", paddingHorizontal: 6, paddingTop: 4 },
   epNumActive: { color: "#00AEEC", fontWeight: "600" },

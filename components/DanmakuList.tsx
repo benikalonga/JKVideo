@@ -222,7 +222,6 @@ export default function DanmakuList({
             { opacity: item._fadeAnim, borderBottomColor: theme.border },
           ]}
         >
-          {timeStr ? <Text style={liveStyles.time}>{timeStr}</Text> : null}
           <View style={liveStyles.msgBody}>
             {guard && (
               <View
@@ -257,6 +256,7 @@ export default function DanmakuList({
               {item.text}
             </Text>
           </View>
+          {timeStr ? <Text style={liveStyles.time}>{timeStr}</Text> : null}
         </Animated.View>
       );
     },
@@ -275,7 +275,7 @@ export default function DanmakuList({
           ]}
         >
           <Text
-            style={[styles.bubbleText, { color: dotColor }]}
+            style={[styles.bubbleText, { color: theme.text }]}
             numberOfLines={3}
           >
             {item.text}
@@ -450,6 +450,7 @@ const liveStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
+    justifyContent:"space-between",
     paddingVertical: 5,
   },
   time: {
