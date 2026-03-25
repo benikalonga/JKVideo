@@ -509,9 +509,15 @@ export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
 
 export async function getFollowedLiveRooms(): Promise<LiveRoom[]> {
   const res = await api.get(`${LIVE_BASE}/xlive/web-ucenter/v1/xfetter/FeedList`, {
-    params: { page: 1, page_size: 10, platform: 'web' },
+    params: { page: 1, page_size: 30, platform: 'web' },
+    headers: { Referer: 'https://live.bilibili.com' },
   });
-  const list = res.data?.data?.list ?? [];
+  if (res.data?.code !== 0) {
+    console.warn('getFollowedLiveRooms error:', res.data?.code, res.data?.message);
+    return [];
+  }
+  // B站不同版本接口返回字段可能为 list 或 rooms
+  const list: any[] = res.data?.data?.list ?? res.data?.data?.rooms ?? [];
   return list.map((r: any) => ({
     roomid: r.room_id ?? r.roomid,
     uid: r.uid,
