@@ -222,7 +222,7 @@ export default function DanmakuList({
             { opacity: item._fadeAnim, borderBottomColor: theme.border },
           ]}
         >
-           {timeStr ? <Text style={liveStyles.time}>{timeStr}</Text> : null}
+          {timeStr ? <Text style={liveStyles.time}>{timeStr}</Text> : null}
           <View style={liveStyles.msgBody}>
             {guard && (
               <View
@@ -242,7 +242,9 @@ export default function DanmakuList({
               <View style={liveStyles.medalTag}>
                 <Text style={liveStyles.medalName}>{item.medalName}</Text>
                 <View style={liveStyles.medalLvBox}>
-                  <Text style={liveStyles.medalLv}>{item.medalLevel}</Text>
+                  <Text style={[liveStyles.medalLv, { color: theme.text }]}>
+                    {item.medalLevel}
+                  </Text>
                 </View>
               </View>
             )}
@@ -257,7 +259,6 @@ export default function DanmakuList({
               {item.text}
             </Text>
           </View>
-         
         </Animated.View>
       );
     },
@@ -451,7 +452,7 @@ const liveStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
-    justifyContent:"space-between",
+    justifyContent: "space-between",
     paddingVertical: 5,
   },
   time: {

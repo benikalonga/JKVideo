@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getLiveRoomDetail, getLiveAnchorInfo, getLiveStreamUrl } from '../services/bilibili';
 import type { LiveRoomDetail, LiveAnchorInfo, LiveStreamInfo } from '../services/types';
 
@@ -19,35 +19,42 @@ export function useLiveDetail(roomId: number) {
     error: null,
   });
 
+  // 用 ref 追踪最新的 roomId，避免 cancelled 闭包问题
+  const latestRoomId = useRef(roomId);
+  latestRoomId.current = roomId;
+
   useEffect(() => {
     if (!roomId) return;
-    let cancelled = false;
-
+    
     setState({ room: null, anchor: null, stream: null, loading: true, error: null });
 
-    async function fetch() {
+    const fetchId = roomId; // 捕获当前 roomId
+
+    async function doFetch() {
       try {
         const [room, anchor] = await Promise.all([
-          getLiveRoomDetail(roomId),
-          getLiveAnchorInfo(roomId),
+          getLiveRoomDetail(fetchId),
+          getLiveAnchorInfo(fetchId),
         ]);
-        if (cancelled) return;
+
+        // 仅在 roomId 未变化时更新状态（替代 cancelled 模式）
+        if (latestRoomId.current !== fetchId) return;
 
         let stream: LiveStreamInfo = { hlsUrl: '', flvUrl: '', qn: 0, qualities: [] };
-        if (room.live_status === 1) {
-          stream = await getLiveStreamUrl(roomId);
+        if (room?.live_status === 1) {
+          stream = await getLiveStreamUrl(fetchId);
         }
-        if (cancelled) return;
+
+        if (latestRoomId.current !== fetchId) return;
 
         setState({ room, anchor, stream, loading: false, error: null });
       } catch (e: any) {
-        if (cancelled) return;
+        if (latestRoomId.current !== fetchId) return;
         setState(prev => ({ ...prev, loading: false, error: e?.message ?? '加载失败' }));
       }
     }
 
-    fetch();
-    return () => { cancelled = true; };
+    doFetch();
   }, [roomId]);
 
   const changeQuality = useCallback(async (qn: number) => {

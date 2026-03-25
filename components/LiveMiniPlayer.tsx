@@ -52,6 +52,10 @@ export function LiveMiniPlayer() {
   const pan = useRef(new Animated.ValueXY()).current;
   const isDragging = useRef(false);
 
+  // 用 ref 保持最新值，避免 PanResponder 闭包捕获过期的初始值
+  const storeRef = useRef({ roomId, clearLive, router });
+  storeRef.current = { roomId, clearLive, router };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -71,10 +75,11 @@ export function LiveMiniPlayer() {
         pan.flattenOffset();
         if (!isDragging.current) {
           const { locationX, locationY } = evt.nativeEvent;
+          const { roomId: rid, clearLive: clear, router: r } = storeRef.current;
           if (locationX > MINI_W - 28 && locationY < 28) {
-            clearLive();
+            clear();
           } else {
-            router.push(`/live/${roomId}` as any);
+            r.push(`/live/${rid}` as any);
           }
           return;
         }

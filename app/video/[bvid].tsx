@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { formatCount, formatDuration } from "../../utils/format";
 import { proxyImageUrl } from "../../utils/imageUrl";
 import { DownloadSheet } from "../../components/DownloadSheet";
 import { useTheme } from "../../utils/theme";
+import { useLiveStore } from "../../store/liveStore";
 
 type Tab = "intro" | "comments" | "danmaku";
 
@@ -30,6 +31,11 @@ export default function VideoDetailScreen() {
   const { bvid } = useLocalSearchParams<{ bvid: string }>();
   const router = useRouter();
   const theme = useTheme();
+
+  // 进入视频详情页时立即清除直播小窗
+  useLayoutEffect(() => {
+    useLiveStore.getState().clearLive();
+  }, []);
   const {
     video,
     playData,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -24,9 +24,16 @@ type Tab = "intro" | "danmaku";
 
 export default function LiveDetailScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
+  console.log("LiveDetailScreen params:", { roomId });
   const router = useRouter();
   const theme = useTheme();
   const id = parseInt(roomId ?? "0", 10);
+
+  // 进入详情页时立即清除小窗（useLayoutEffect 在绘制前同步执行）
+  useLayoutEffect(() => {
+    useLiveStore.getState().clearLive();
+  }, []);
+
   const { room, anchor, stream, loading, error, changeQuality } =
     useLiveDetail(id);
   const [tab, setTab] = useState<Tab>("intro");
@@ -37,15 +44,7 @@ export default function LiveDetailScreen() {
   const qualities = stream?.qualities ?? [];
   const currentQn = stream?.qn ?? 0;
 
-  const { setLive, clearLive } = useLiveStore();
-
-  // 进入该直播间时，若小窗正在播放同一房间，清除小窗避免双播
-  // 仅在挂载时运行一次（用 getState 读值，不创建响应式依赖）
-  useEffect(() => {
-    if (useLiveStore.getState().roomId === id) {
-      clearLive();
-    }
-  }, []);
+  const setLive = useLiveStore(s => s.setLive);
 
   const actualRoomId = room?.roomid ?? id;
   const { danmakus, giftCounts } = useLiveDanmaku(isLive ? actualRoomId : 0);

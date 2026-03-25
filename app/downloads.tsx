@@ -8,7 +8,6 @@ import {
   Image,
   Modal,
   StatusBar,
-  useWindowDimensions,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,14 +35,10 @@ export default function DownloadsScreen() {
   const [playingUri, setPlayingUri] = useState<string | null>(null);
   const [playingTitle, setPlayingTitle] = useState('');
   const [shareTask, setShareTask] = useState<(DownloadTask & { key: string }) | null>(null);
-  const [showControls, setShowControls] = useState(true);
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
 
   async function openPlayer(uri: string, title: string) {
     setPlayingTitle(title);
     setPlayingUri(uri);
-    setShowControls(true);
     await ScreenOrientation?.unlockAsync();
   }
 
@@ -133,29 +128,23 @@ export default function DownloadsScreen() {
         onRequestClose={closePlayer}
       >
         <StatusBar hidden />
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.playerBg}
-          onPress={() => setShowControls(v => !v)}
-        >
+        <View style={styles.playerBg}>
           {playingUri && (
             <Video
               source={{ uri: playingUri }}
-              style={isLandscape ? { width, height } : { width, height: width * 0.5625 }}
+              style={StyleSheet.absoluteFillObject}
               resizeMode="contain"
-              controls={false}
+              controls
               paused={false}
             />
           )}
-          {showControls && (
-            <View style={[styles.playerBar, isLandscape && { top: 16 }]}>
-              <TouchableOpacity onPress={closePlayer} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="chevron-back" size={24} color="#fff" />
-              </TouchableOpacity>
-              <Text style={styles.playerTitle} numberOfLines={1}>{playingTitle}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+          <View style={styles.playerBar}>
+            <TouchableOpacity onPress={closePlayer} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="chevron-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.playerTitle} numberOfLines={1}>{playingTitle}</Text>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

@@ -19,9 +19,12 @@ export function MiniPlayer() {
   const pan = useRef(new Animated.ValueXY()).current;
   const isDragging = useRef(false);
 
+  // 用 ref 保持最新值，避免 PanResponder 闭包捕获过期的初始值
+  const storeRef = useRef({ bvid, clearVideo, router });
+  storeRef.current = { bvid, clearVideo, router };
+
   const panResponder = useRef(
     PanResponder.create({
-      // 从 start 阶段即抢占响应权，确保拖动可靠触发
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         isDragging.current = false;
@@ -38,16 +41,15 @@ export function MiniPlayer() {
       onPanResponderRelease: (evt) => {
         pan.flattenOffset();
         if (!isDragging.current) {
-          // 点击：通过坐标判断是关闭还是跳转
           const { locationX, locationY } = evt.nativeEvent;
+          const { bvid: vid, clearVideo: clear, router: r } = storeRef.current;
           if (locationX > MINI_W - 28 && locationY < 28) {
-            clearVideo();
+            clear();
           } else {
-            router.push(`/video/${bvid}` as any);
+            r.push(`/video/${vid}` as any);
           }
           return;
         }
-        // 拖动：吸附到最近边缘
         const { width: sw, height: sh } = Dimensions.get('window');
         const curX = (pan.x as any)._value;
         const curY = (pan.y as any)._value;
