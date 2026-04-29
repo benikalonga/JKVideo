@@ -128,8 +128,8 @@ const styles = StyleSheet.create({
   info: { padding: 6 },
   title: {
     fontSize: 12,
+    lineHeight: 17,
     color: "#212121",
-    height: 33,
     marginBottom: 4,
   },
   ownerRow: {
