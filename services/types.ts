@@ -3,6 +3,8 @@ export interface VideoItem {
   aid: number;
   title: string;
   pic: string;
+  tname?: string;
+  pubdate?: number;
   owner: {
     mid: number;
     name: string;

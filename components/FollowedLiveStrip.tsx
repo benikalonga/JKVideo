@@ -4,9 +4,9 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
 } from "react-native";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../store/authStore";
 import { getFollowedLiveRooms } from "../services/bilibili";
@@ -53,6 +53,8 @@ export function FollowedLiveStrip() {
             <Image
               source={{ uri: proxyImageUrl(room.face) }}
               style={[styles.avatar, { backgroundColor: theme.card }]}
+              contentFit="cover"
+              recyclingKey={String(room.roomid)}
             />
             <Text
               style={[styles.name, { color: theme.text }]}

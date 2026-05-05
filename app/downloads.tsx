@@ -5,11 +5,11 @@ import {
   SectionList,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Modal,
   StatusBar,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -171,7 +171,7 @@ function DownloadRow({
 
   const rowContent = (
     <View style={[styles.row, { backgroundColor: theme.card }]}>
-      <Image source={{ uri: proxyImageUrl(task.cover) }} style={styles.cover} />
+      <Image source={{ uri: proxyImageUrl(task.cover) }} style={styles.cover} contentFit="cover" recyclingKey={task.bvid} />
       <View style={styles.info}>
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{task.title}</Text>
         <Text style={[styles.qdesc, { color: theme.textSub }]}>

@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -43,12 +44,14 @@ export default function SearchScreen() {
     const term = (kw ?? keyword).trim();
     if (term) {
       if (kw) setKeyword(kw);
+      Keyboard.dismiss();
       search(kw ?? keyword, true);
     }
   }, [keyword, search, setKeyword]);
 
   const handleSuggestionPress = useCallback((value: string) => {
     setKeyword(value);
+    Keyboard.dismiss();
     search(value, true);
   }, [search, setKeyword]);
 
@@ -110,7 +113,11 @@ export default function SearchScreen() {
   }, [hasResults, sort, changeSort, theme.card]);
 
   const ListEmptyComponent = () => {
-    if (loading) return null;
+    if (loading) return (
+      <View style={styles.emptyBox}>
+        <ActivityIndicator color="#00AEEC" size="large" />
+      </View>
+    );
     if (!keyword.trim()) return null;
     return (
       <View style={styles.emptyBox}>

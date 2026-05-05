@@ -50,8 +50,7 @@ export function LoginModal({ visible, onClose }: Props) {
     }
   }, [visible]);
 
-  useEffect(() => {
-    if (!visible) return;
+  function initQRCode() {
     setStatus("loading");
     setQrData(null);
     setQrKey(null);
@@ -62,7 +61,11 @@ export function LoginModal({ visible, onClose }: Props) {
         setStatus("waiting");
       })
       .catch(() => setStatus("error"));
+  }
 
+  useEffect(() => {
+    if (!visible) return;
+    initQRCode();
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -187,7 +190,13 @@ export function LoginModal({ visible, onClose }: Props) {
             </>
           )}
           {status === "error" && (
-            <Text style={[styles.hint, { color: theme.modalTextSub }]}>二维码已过期，请关闭重试</Text>
+            <View style={styles.errorBox}>
+              <Text style={[styles.hint, { color: theme.modalTextSub }]}>二维码已过期</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={initQRCode}>
+                <Ionicons name="refresh" size={14} color="#fff" />
+                <Text style={styles.retryTxt}>重新获取</Text>
+              </TouchableOpacity>
+            </View>
           )}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeTxt}>关闭</Text>
@@ -230,7 +239,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  hint: { fontSize: 13, color: "#666", marginBottom: 20 },
+  hint: { fontSize: 13, color: "#666", marginBottom: 12 },
+  errorBox: { alignItems: "center", marginBottom: 8 },
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#00AEEC",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  retryTxt: { fontSize: 13, color: "#fff", fontWeight: "600" },
   closeBtn: { padding: 12 },
   closeTxt: { fontSize: 14, color: "#00AEEC" },
 });

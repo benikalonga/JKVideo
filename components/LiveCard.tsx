@@ -2,11 +2,11 @@ import React from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { LivePulse } from "./LivePulse";
 import type { LiveRoom } from "../services/types";
@@ -41,15 +41,14 @@ export const LiveCard = React.memo(function LiveCard({
       <View style={styles.thumbContainer}>
         <Image
           source={{ uri: proxyImageUrl(item.cover) }}
-          style={[
-            styles.thumb,
-            { width: cardWidth, height: cardWidth * 0.5625, backgroundColor: theme.card },
-          ]}
-          resizeMode="cover"
+          style={[styles.thumb, { width: cardWidth, height: cardWidth * 0.5625, backgroundColor: theme.card }]}
+          contentFit="cover"
+          recyclingKey={String(item.roomid)}
+          transition={200}
         />
         <View style={styles.liveBadge}>
           {isLivePulse && <LivePulse />}
-          <Text style={styles.liveBadgeText}>直播中</Text>
+          <Text style={styles.liveBadgeText}>直播</Text>
         </View>
         <View style={styles.meta}>
           <Ionicons name="people" size={11} color="#fff" />
@@ -67,8 +66,13 @@ export const LiveCard = React.memo(function LiveCard({
           <Image
             source={{ uri: proxyImageUrl(item.face) }}
             style={styles.avatar}
+            contentFit="cover"
+            recyclingKey={`face-${item.roomid}`}
           />
-          <Text style={[styles.owner, { color: theme.textSub }]} numberOfLines={1}>
+          <Text
+            style={[styles.owner, { color: theme.textSub }]}
+            numberOfLines={1}
+          >
             {item.uname}
           </Text>
         </View>
@@ -103,32 +107,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 2,
   },
-  liveBadgeText: { color: "#fff", fontSize: 10, fontWeight: "400" },
+  liveBadgeText: { color: "#fff", fontSize: 9, fontWeight: "400" },
   meta: {
     position: "absolute",
     bottom: 4,
     left: 4,
-    paddingHorizontal: 4,
     borderRadius: 5,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
   },
-  metaText: { fontSize: 10, color: "#fff" },
+  metaText: { fontSize: 9, color: "#fff" },
   areaBadge: {
     position: "absolute",
     bottom: 4,
     right: 4,
     borderRadius: 5,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
   },
-  areaText: { color: "#fff", fontSize: 10 },
+  areaText: { color: "#fff", fontSize: 9 },
   info: { padding: 6 },
   title: {
     fontSize: 12,
     lineHeight: 17,
+    minHeight: 40,
     color: "#212121",
     marginBottom: 4,
   },

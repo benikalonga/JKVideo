@@ -22,8 +22,11 @@ interface Props {
   onPress: () => void;
 }
 
-export const VideoCard = React.memo(function VideoCard({ item, onPress }: Props) {
-  const trafficSaving = useSettingsStore(s => s.trafficSaving);
+export const VideoCard = React.memo(function VideoCard({
+  item,
+  onPress,
+}: Props) {
+  const trafficSaving = useSettingsStore((s) => s.trafficSaving);
   const theme = useTheme();
   return (
     <TouchableOpacity
@@ -33,7 +36,9 @@ export const VideoCard = React.memo(function VideoCard({ item, onPress }: Props)
     >
       <View style={styles.thumbContainer}>
         <Image
-          source={{ uri: coverImageUrl(item.pic, trafficSaving ? 'normal' : 'hd') }}
+          source={{
+            uri: coverImageUrl(item.pic, trafficSaving ? "normal" : "hd"),
+          }}
           style={[styles.thumb, { backgroundColor: theme.card }]}
           contentFit="cover"
           transition={200}
@@ -55,7 +60,10 @@ export const VideoCard = React.memo(function VideoCard({ item, onPress }: Props)
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {item.title}
         </Text>
-        <Text style={[styles.owner, { color: theme.textSub }]} numberOfLines={1}>
+        <Text
+          style={[styles.owner, { color: theme.textSub }]}
+          numberOfLines={1}
+        >
           {item.owner?.name ?? ""}
         </Text>
       </View>
@@ -82,15 +90,16 @@ const styles = StyleSheet.create({
     bottom: 4,
     right: 4,
     borderRadius: 5,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
-    paddingVertical: 0,
   },
-  durationText: { color: "#fff", fontSize: 10 },
+  durationText: { color: "#fff", fontSize: 9 },
   info: { padding: 6 },
   title: {
     fontSize: 12,
     lineHeight: 17,
+    minHeight: 40,
     color: "#212121",
     marginBottom: 4,
   },
@@ -99,13 +108,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 4,
     left: 4,
-    paddingHorizontal: 4,
     borderRadius: 5,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 0,
     gap: 2,
   },
-  metaText: { fontSize: 10, color: "#fff" },
+  metaText: { fontSize: 9, color: "#fff" },
 });

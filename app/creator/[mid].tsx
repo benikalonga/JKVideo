@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,25 +6,33 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { getUploaderInfo, getUploaderVideos } from '../../services/bilibili';
 import type { VideoItem } from '../../services/types';
 import { useTheme } from '../../utils/theme';
-import { formatCount, formatDuration } from '../../utils/format';
+import { formatCount, formatDuration, formatTime } from '../../utils/format';
 import { proxyImageUrl, coverImageUrl } from '../../utils/imageUrl';
 import { useSettingsStore } from '../../store/settingsStore';
 
 const PAGE_SIZE = 20;
+const TOPBAR_HEIGHT = 44;
+const FADE_START = 80;
+const FADE_END = 160;
+
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<VideoItem>);
 
 export default function CreatorScreen() {
   const { mid: midStr } = useLocalSearchParams<{ mid: string }>();
   const mid = Number(midStr);
   const router = useRouter();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const trafficSaving = useSettingsStore(s => s.trafficSaving);
 
   const [info, setInfo] = useState<{
@@ -35,7 +43,15 @@ export default function CreatorScreen() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [infoLoading, setInfoLoading] = useState(true);
-  const loadingRef = React.useRef(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const loadingRef = useRef(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const topBarOpacity = scrollY.interpolate({
+    inputRange: [FADE_START, FADE_END],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   useEffect(() => {
     getUploaderInfo(mid)
@@ -61,22 +77,81 @@ export default function CreatorScreen() {
     }
   }, [mid]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [infoData, { videos: newVideos, total: t }] = await Promise.all([
+        getUploaderInfo(mid),
+        getUploaderVideos(mid, 1, PAGE_SIZE),
+      ]);
+      setInfo(infoData);
+      setTotal(t);
+      setVideos(newVideos);
+      setPage(1);
+    } catch {}
+    finally {
+      setRefreshing(false);
+    }
+  }, [mid]);
+
   const hasMore = videos.length < total;
 
-  return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
-      {/* Top bar */}
-      <View style={[styles.topBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.topTitle, { color: theme.text }]} numberOfLines={1}>
-          {info?.name ?? 'UP主主页'}
-        </Text>
-        <View style={styles.backBtn} />
-      </View>
+  const HeroHeader = (
+    <View style={[styles.hero, { borderBottomColor: theme.border }]}>
+      {info ? (
+        <>
+          <Image
+            source={{ uri: proxyImageUrl(info.face) }}
+            style={styles.heroBg}
+            contentFit="cover"
+            blurRadius={20}
+          />
+          <View style={[styles.heroOverlay, { backgroundColor: theme.card }]} />
+        </>
+      ) : (
+        <View style={[styles.heroBg, { backgroundColor: theme.card }]} />
+      )}
+      {infoLoading ? (
+        <View style={[styles.profileContent, { paddingTop: TOPBAR_HEIGHT + 24 }]}>
+          <ActivityIndicator color="#00AEEC" />
+        </View>
+      ) : info ? (
+        <View style={[styles.profileContent, { paddingTop: TOPBAR_HEIGHT + 12 }]}>
+          <Image
+            source={{ uri: proxyImageUrl(info.face) }}
+            style={styles.avatar}
+            contentFit="cover"
+            recyclingKey={String(mid)}
+          />
+          <Text style={[styles.name, { color: theme.text }]}>{info.name}</Text>
+          {info.sign ? (
+            <Text style={[styles.sign, { color: theme.textSub }]} numberOfLines={2}>{info.sign}</Text>
+          ) : null}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNum, { color: theme.text }]}>{formatCount(info.follower)}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSub }]}>粉丝</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statNum, { color: theme.text }]}>{formatCount(info.archiveCount)}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSub }]}>视频</Text>
+            </View>
+          </View>
+          <Text style={[styles.videoListHeader, { color: theme.textSub }]}>
+            全部视频（{total}）
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
 
-      <FlatList
+  return (
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.card }]}
+      edges={['top', 'left', 'right']}
+    >
+      <AnimatedFlatList
         data={videos}
         keyExtractor={item => item.bvid}
         showsVerticalScrollIndicator={false}
@@ -84,39 +159,21 @@ export default function CreatorScreen() {
         onEndReachedThreshold={0.3}
         windowSize={7}
         maxToRenderPerBatch={6}
-        removeClippedSubviews
-        ListHeaderComponent={
-          infoLoading ? (
-            <ActivityIndicator style={styles.loader} color="#00AEEC" />
-          ) : info ? (
-            <View style={[styles.profileCard, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-              <Image
-                source={{ uri: proxyImageUrl(info.face) }}
-                style={styles.avatar}
-                contentFit="cover"
-                recyclingKey={String(mid)}
-              />
-              <Text style={[styles.name, { color: theme.text }]}>{info.name}</Text>
-              {info.sign ? (
-                <Text style={[styles.sign, { color: theme.textSub }]} numberOfLines={2}>{info.sign}</Text>
-              ) : null}
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statNum, { color: theme.text }]}>{formatCount(info.follower)}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSub }]}>粉丝</Text>
-                </View>
-                <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                <View style={styles.statItem}>
-                  <Text style={[styles.statNum, { color: theme.text }]}>{formatCount(info.archiveCount)}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSub }]}>视频</Text>
-                </View>
-              </View>
-              <Text style={[styles.videoListHeader, { color: theme.textSub }]}>
-                全部视频（{total}）
-              </Text>
-            </View>
-          ) : null
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true },
+        )}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#00AEEC"
+            colors={["#00AEEC"]}
+            progressViewOffset={insets.top + TOPBAR_HEIGHT}
+          />
         }
+        ListHeaderComponent={HeroHeader}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.videoRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
@@ -141,7 +198,10 @@ export default function CreatorScreen() {
               </Text>
               <View style={styles.videoMeta}>
                 <Ionicons name="play" size={11} color={theme.textSub} />
-                <Text style={[styles.metaText, { color: theme.textSub }]}>{formatCount(item.stat.view)}</Text>
+                <Text style={[styles.metaText, { color: theme.textSub }]}>{formatCount(item.stat?.view ?? 0)}</Text>
+                {!!item.pubdate && (
+                  <Text style={[styles.metaText, { color: theme.textSub }]}>· {formatTime(item.pubdate)}</Text>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -152,30 +212,93 @@ export default function CreatorScreen() {
           ) : null
         }
         ListFooterComponent={
-          loading ? <ActivityIndicator style={styles.loader} color="#00AEEC" /> : null
+          <View style={styles.footer}>
+            {loading && <ActivityIndicator color="#00AEEC" />}
+          </View>
         }
       />
+
+      {/* 浮动 topBar：背景透明 → 不透明，跟随滚动 */}
+      <View
+        style={[styles.topBarFloat, { height: TOPBAR_HEIGHT, top: insets.top }]}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: theme.card, opacity: topBarOpacity },
+          ]}
+        />
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.topBarBorder,
+            { backgroundColor: theme.border, opacity: topBarOpacity },
+          ]}
+        />
+        <View style={styles.topBarContent}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Animated.Text
+            style={[styles.topTitle, { color: theme.text, opacity: topBarOpacity }]}
+            numberOfLines={1}
+          >
+            {info?.name ?? 'UP主主页'}
+          </Animated.Text>
+          <View style={styles.backBtn} />
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  topBar: {
+  hero: {
+    overflow: 'hidden',
+    position: 'relative',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  heroBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  heroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.82,
+  },
+  topBarFloat: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+  topBarBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+  },
+  topBarContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { padding: 4, width: 32 },
   topTitle: { flex: 1, fontSize: 16, fontWeight: '600', textAlign: 'center' },
-  profileCard: {
+  profileContent: {
     alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginBottom: 4,
+    paddingBottom: 16,
   },
   avatar: { width: 72, height: 72, borderRadius: 36, marginBottom: 10 },
   name: { fontSize: 18, fontWeight: '700', marginBottom: 6 },
@@ -185,8 +308,7 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 18, fontWeight: '700' },
   statLabel: { fontSize: 12, marginTop: 2 },
   statDivider: { width: 1, height: 28 },
-  videoListHeader: { alignSelf: 'flex-start', paddingHorizontal: 14, fontSize: 13, paddingBottom: 8 },
-  loader: { marginVertical: 24 },
+  videoListHeader: { alignSelf: 'flex-start', paddingHorizontal: 14, fontSize: 13, paddingBottom: 4 },
   videoRow: {
     flexDirection: 'row',
     paddingHorizontal: 12,
@@ -203,7 +325,8 @@ const styles = StyleSheet.create({
   durationText: { color: '#fff', fontSize: 10 },
   videoInfo: { flex: 1, justifyContent: 'space-between', paddingVertical: 2 },
   videoTitle: { fontSize: 13, lineHeight: 18 },
-  videoMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  videoMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 12 },
   emptyTxt: { textAlign: 'center', padding: 40 },
+  footer: { height: 48, justifyContent: 'center', alignItems: 'center' },
 });
