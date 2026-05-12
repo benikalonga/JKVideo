@@ -37,6 +37,12 @@ export function useVideoDetail(bvid: string) {
   }
 
   useEffect(() => {
+    // bvid 切换时立刻清空旧数据，防止上一支视频的播放器/简介/清晰度短暂"残影"造成抖动
+    setVideo(null);
+    setPlayData(null);
+    setQualities([]);
+    setCurrentQn(0);
+    cidRef.current = 0;
     async function fetchData() {
       try {
         setLoading(true);

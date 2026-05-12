@@ -87,7 +87,7 @@ export function LoginModal({ visible, onClose }: Props) {
         if (result.code === 0 && result.cookie) {
           clearInterval(pollRef.current!);
           try {
-            await login(result.cookie, "", "");
+            await login(result.cookie, "", "", result.csrf);
           } catch {
             if (!cancelled) setStatus("error");
             return;

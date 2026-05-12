@@ -82,6 +82,12 @@ interface Props {
   onTimeUpdate?: (t: number) => void;
   initialTime?: number;
   forcePaused?: boolean;
+  /** 点击播放器右上角"弹幕列表"图标，由外层打开 Sheet。仅在小窗口生效。 */
+  onDanmakuListPress?: () => void;
+  /** 点击播放器左上角返回箭头，跟随播放器控制栏一起显隐。仅在小窗口生效。 */
+  onBack?: () => void;
+  /** 视频封面 URL：作为 poster 覆盖在 <Video> 上，首帧出来前用来盖住黑屏 */
+  coverUrl?: string;
 }
 
 export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
@@ -100,6 +106,9 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       onTimeUpdate,
       initialTime,
       forcePaused,
+      onDanmakuListPress,
+      onBack,
+      coverUrl,
     }: Props,
     ref,
   ) {
@@ -109,6 +118,12 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
     const [resolvedUrl, setResolvedUrl] = useState<string | undefined>();
     const isDash = !!playData?.dash;
+    // 封面挡片：用于盖住 <Video> 从挂载到 onLoad 出首帧之间的黑屏
+    // resolvedUrl 变化（新视频 / 换清晰度）时重新置 true，等下一次 onLoad 再撤
+    const [coverVisible, setCoverVisible] = useState(true);
+    useEffect(() => {
+      setCoverVisible(true);
+    }, [resolvedUrl]);
 
     const [showControls, setShowControls] = useState(true);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -488,6 +503,8 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
               setBuffered(buf);
             }}
             onLoad={() => {
+              // 首帧已就绪，撤掉 poster 挡片，让 <Video> 透出
+              setCoverVisible(false);
               // 切清晰度后跳回原进度
               const pending = pendingSeekRef.current;
               let didSeek = false;
@@ -531,7 +548,26 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             }}
           />
         ) : (
-          <View style={styles.placeholder} />
+          // 没拿到 resolvedUrl 之前用主题色 + 封面占位，避免页面背景 → 纯黑的撞色
+          <View style={[styles.placeholder, { backgroundColor: theme.card }]}>
+            {!!coverUrl && (
+              <Image
+                source={{ uri: coverUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+              />
+            )}
+          </View>
+        )}
+
+        {/* poster 挡片：<Video> 已挂载但首帧未到达时显示封面 */}
+        {!!resolvedUrl && coverVisible && !!coverUrl && (
+          <Image
+            source={{ uri: coverUrl }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            pointerEvents="none"
+          />
         )}
 
         {switching && (
@@ -562,7 +598,32 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
               colors={["rgba(0,0,0,0.55)", "transparent"]}
               style={styles.topBar}
               pointerEvents="box-none"
-            ></LinearGradient>
+            >
+              {onBack && (
+                <TouchableOpacity
+                  style={styles.topBtn}
+                  onPress={() => {
+                    onBack();
+                    showAndReset();
+                  }}
+                  hitSlop={6}
+                >
+                  <Ionicons name="chevron-back" size={22} color="#fff" />
+                </TouchableOpacity>
+              )}
+              <View style={{ flex: 1 }} />
+              {onDanmakuListPress && (
+                <TouchableOpacity
+                  style={styles.topBtn}
+                  onPress={() => {
+                    onDanmakuListPress();
+                    showAndReset();
+                  }}
+                >
+                  <Ionicons name="list-outline" size={20} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </LinearGradient>
 
             <TouchableOpacity
               style={styles.centerBtn}

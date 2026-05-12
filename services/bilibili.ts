@@ -5,7 +5,7 @@ import pako from 'pako';
 import type { VideoItem, Comment, PlayUrlResponse, QRCodeInfo, VideoShotData, DanmakuItem, LiveRoom, LiveRoomDetail, LiveAnchorInfo, LiveStreamInfo, SearchSuggestItem, HotSearchItem } from './types';
 import { signWbi } from '../utils/wbi';
 import { parseDanmakuXml } from '../utils/danmaku';
-import { getSecure } from '../utils/secureStorage';
+import { getSecure, setSecure } from '../utils/secureStorage';
 
 const isWeb = Platform.OS === 'web';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -46,20 +46,39 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const [sessdata, buvid3] = await Promise.all([
+  const [sessdata, biliJct, buvid3] = await Promise.all([
     getSecure('SESSDATA'),
+    getSecure('bili_jct'),
     getBuvid3(),
   ]);
   if (isWeb) {
     // Browsers block Cookie/Referer/Origin headers; relay via custom headers to proxy
     if (buvid3) config.headers['X-Buvid3'] = buvid3;
     if (sessdata) config.headers['X-Sessdata'] = sessdata;
+    if (biliJct) config.headers['X-Bili-Jct'] = biliJct;
   } else {
     const cookies: string[] = [`buvid3=${buvid3}`];
     if (sessdata) cookies.push(`SESSDATA=${sessdata}`);
+    if (biliJct) cookies.push(`bili_jct=${biliJct}`);
     config.headers['Cookie'] = cookies.join('; ');
   }
   return config;
+});
+
+// 被动累积：任何响应 Set-Cookie 里出现 bili_jct 都顺手存下来。覆盖老用户没有 CSRF 的情况。
+api.interceptors.response.use(async (response) => {
+  if (isWeb) return response;
+  const setCookie = response.headers?.['set-cookie'];
+  if (Array.isArray(setCookie)) {
+    for (const c of setCookie) {
+      const part = c.split(';').find((p: string) => p.trim().startsWith('bili_jct='));
+      if (part) {
+        const value = part.trim().replace('bili_jct=', '');
+        if (value) await setSecure('bili_jct', value);
+      }
+    }
+  }
+  return response;
 });
 
 // ─── Request deduplication ──────────────────────────────────────────────────
@@ -296,7 +315,7 @@ export async function generateQRCode(): Promise<QRCodeInfo> {
   return res.data.data as QRCodeInfo;
 }
 
-export async function pollQRCode(qrcode_key: string): Promise<{ code: number; cookie?: string }> {
+export async function pollQRCode(qrcode_key: string): Promise<{ code: number; cookie?: string; csrf?: string }> {
   const headers = isWeb
     ? {}
     : { 'Referer': 'https://www.bilibili.com' };
@@ -306,22 +325,58 @@ export async function pollQRCode(qrcode_key: string): Promise<{ code: number; co
   });
   const { code } = res.data.data;
   let cookie: string | undefined;
+  let csrf: string | undefined;
   if (code === 0) {
     if (isWeb) {
       // Proxy relays SESSDATA via custom response header
       cookie = res.headers['x-sessdata'] as string | undefined;
+      csrf = res.headers['x-bili-jct'] as string | undefined;
     } else {
       const setCookie = res.headers['set-cookie'];
-      const match = setCookie?.find((c: string) => c.includes('SESSDATA='));
-      if (match) {
-        const sessPart = match.split(';').find((p: string) => p.trim().startsWith('SESSDATA='));
-        if (sessPart) {
-          cookie = sessPart.trim().replace('SESSDATA=', '');
+      if (Array.isArray(setCookie)) {
+        for (const c of setCookie) {
+          const sessPart = c.split(';').find((p: string) => p.trim().startsWith('SESSDATA='));
+          if (sessPart) cookie = sessPart.trim().replace('SESSDATA=', '');
+          const jctPart = c.split(';').find((p: string) => p.trim().startsWith('bili_jct='));
+          if (jctPart) csrf = jctPart.trim().replace('bili_jct=', '');
         }
       }
     }
   }
-  return { code, cookie };
+  return { code, cookie, csrf };
+}
+
+// 查关注状态（attribute: 0=未关注, 2=关注, 6=互相关注）
+export async function getRelation(mid: number): Promise<{ following: boolean; mutual: boolean }> {
+  try {
+    const res = await api.get('/x/relation', { params: { fid: mid } });
+    const attribute = res.data?.data?.attribute ?? 0;
+    return {
+      following: attribute === 2 || attribute === 6,
+      mutual: attribute === 6,
+    };
+  } catch {
+    return { following: false, mutual: false };
+  }
+}
+
+/** 修改与 UP 主的关系：act=1 关注，act=2 取消关注。失败抛错（消息文本来自 B 站 code/message） */
+export async function modifyRelation(mid: number, act: 1 | 2): Promise<void> {
+  const biliJct = await getSecure('bili_jct');
+  if (!biliJct) throw new Error('NO_CSRF');
+  // application/x-www-form-urlencoded body
+  const body =
+    `fid=${encodeURIComponent(String(mid))}` +
+    `&act=${act}` +
+    `&re_src=11` +
+    `&csrf=${encodeURIComponent(biliJct)}`;
+  const res = await api.post('/x/relation/modify', body, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  const code = res.data?.code;
+  if (code !== 0) {
+    throw new Error(res.data?.message || `code=${code}`);
+  }
 }
 
 

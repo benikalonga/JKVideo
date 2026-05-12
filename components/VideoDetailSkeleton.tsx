@@ -2,9 +2,9 @@ import React, { useEffect, useRef, memo } from "react";
 import { View, StyleSheet, Animated } from "react-native";
 import { useTheme } from "../utils/theme";
 
-// 注意：原版本每个 SkeletonBlock 都调 useTheme，导致 40+ 个 store 订阅
-// + 整体 6 张卡片 + opacity loop，进入页面瞬间产生明显抖动。
-// 现优化：颜色由顶层 useTheme 一次拿到，所有 block 走 inline style。
+// 性能优化：颜色由顶层 useTheme 一次拿到，所有 block 走 inline style，避免 40+ store 订阅。
+// 布局：与详情页 ListHeaderComponent 结构同步 ——
+//   标题块 → Meta 行 → 动作按钮行 → 创作者行 → 推荐视频标题 → 推荐卡片
 
 interface BlockProps {
   width: number | `${number}%`;
@@ -43,6 +43,11 @@ const RelatedCardSkeleton = memo(function RelatedCardSkeleton({ bg, border }: { 
   );
 });
 
+// 一个动作按钮占位（pill 形状，匹配 VideoActionRow 实际按钮形态）
+const ActionPillSkeleton = memo(function ActionPillSkeleton({ bg, width }: { bg: string; width: number }) {
+  return <SkeletonBlock width={width} height={28} radius={14} bg={bg} />;
+});
+
 const CARD_COUNT = 4;
 
 export function VideoDetailSkeleton() {
@@ -65,22 +70,30 @@ export function VideoDetailSkeleton() {
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: theme.card, opacity }]}>
-      {/* UP 主行 */}
-      <View style={styles.upRow}>
-        <SkeletonBlock width={38} height={38} radius={19} bg={bg} />
-        <View style={styles.upInfo}>
-          <SkeletonBlock width={120} height={13} bg={bg} />
-          <SkeletonBlock width={160} height={11} bg={bg} style={{ marginTop: 6 }} />
-        </View>
+      {/* 标题块（两行） + Meta 行 */}
+      <View style={styles.titleBlock}>
+        <SkeletonBlock width={"92%"} height={16} bg={bg} />
+        <SkeletonBlock width={"60%"} height={16} bg={bg} style={{ marginTop: 8 }} />
+        <SkeletonBlock width={"75%"} height={12} bg={bg} style={{ marginTop: 10 }} />
       </View>
 
-      {/* 标题 + 简介 */}
-      <View style={[styles.titleSection, { borderBottomColor: border }]}>
-        <SkeletonBlock width={"95%"} height={14} bg={bg} />
-        <SkeletonBlock width={"60%"} height={14} bg={bg} style={{ marginTop: 8 }} />
-        <SkeletonBlock width={48} height={16} radius={4} bg={bg} style={{ marginTop: 12 }} />
-        <SkeletonBlock width={"100%"} height={12} bg={bg} style={{ marginTop: 12 }} />
-        <SkeletonBlock width={"80%"} height={12} bg={bg} style={{ marginTop: 6 }} />
+      {/* 动作按钮行 */}
+      <View style={[styles.actionRow, { borderTopColor: border }]}>
+        <ActionPillSkeleton bg={bg} width={72} />
+        <ActionPillSkeleton bg={bg} width={72} />
+        <ActionPillSkeleton bg={bg} width={72} />
+        <ActionPillSkeleton bg={bg} width={72} />
+        <ActionPillSkeleton bg={bg} width={72} />
+      </View>
+
+      {/* 创作者行 + 关注按钮 */}
+      <View style={[styles.creatorRow, { borderTopColor: border, borderBottomColor: border }]}>
+        <SkeletonBlock width={38} height={38} radius={19} bg={bg} />
+        <View style={styles.creatorInfo}>
+          <SkeletonBlock width={120} height={14} bg={bg} />
+          <SkeletonBlock width={160} height={11} bg={bg} style={{ marginTop: 6 }} />
+        </View>
+        <SkeletonBlock width={56} height={28} radius={14} bg={bg} />
       </View>
 
       {/* 推荐视频标题 */}
@@ -98,21 +111,27 @@ export function VideoDetailSkeleton() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  upRow: {
+  titleBlock: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
+  actionRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingVertical: 10,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  upInfo: { flex: 1, marginLeft: 10 },
-  titleSection: {
-    padding: 14,
+  creatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  creatorInfo: { flex: 1, marginLeft: 10 },
   relatedHeader: {
     paddingLeft: 13,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   card: {
