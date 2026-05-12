@@ -13,6 +13,10 @@ interface Props {
 
 const LANE_COUNT = 5;
 const LANE_H = 28;
+// 同屏弹幕上限（原 30，提至 60）
+const MAX_ACTIVE = 60;
+// activated 集合阈值，触达后整体清零防止内存膨胀
+const ACTIVATED_LIMIT = 1000;
 
 interface ActiveDanmaku {
   id: string;
@@ -73,7 +77,10 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
 
     const newItems: ActiveDanmaku[] = [];
 
-    if (activated.current.size > 200) activated.current.clear(); // prevent memory leak
+    if (activated.current.size > ACTIVATED_LIMIT) {
+      activated.current.clear(); // prevent memory leak
+      idCounter.current = 0;
+    }
     for (const item of candidates) {
       const key = `${item.time}_${item.text}`;
       activated.current.add(key);
@@ -124,8 +131,7 @@ export default function DanmakuOverlay({ danmakus, currentTime, screenWidth, scr
     if (newItems.length > 0) {
       setActiveDanmakus(prev => {
         const combined = [...prev, ...newItems];
-        // Cap at 30 simultaneous danmakus
-        return combined.slice(Math.max(0, combined.length - 30));
+        return combined.slice(Math.max(0, combined.length - MAX_ACTIVE));
       });
     }
   }, [currentTime, visible, danmakus, pickLane, screenWidth]);

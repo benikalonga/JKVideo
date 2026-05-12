@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getVideoDetail, getPlayUrl } from '../services/bilibili';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { usePlayProgressStore } from '../store/playProgressStore';
 import type { VideoItem, PlayUrlResponse } from '../services/types';
 
 export function useVideoDetail(bvid: string) {
@@ -11,6 +12,7 @@ export function useVideoDetail(bvid: string) {
   const [currentQn, setCurrentQn] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialTime, setInitialTime] = useState(0);
   const cidRef = useRef<number>(0);
   const isLoggedIn = useAuthStore(s => s.isLoggedIn);
   const trafficSaving = useSettingsStore(s => s.trafficSaving);
@@ -38,6 +40,8 @@ export function useVideoDetail(bvid: string) {
     async function fetchData() {
       try {
         setLoading(true);
+        // 读取续播位置
+        setInitialTime(usePlayProgressStore.getState().get(bvid));
         const detail = await getVideoDetail(bvid);
         setVideo(detail);
         const cid = detail.pages?.[0]?.cid ?? detail.cid as number;
@@ -53,13 +57,32 @@ export function useVideoDetail(bvid: string) {
   }, [bvid]);
 
   // 登录状态变化时重新拉取清晰度列表（登录后可能获得更高画质）
+  // cancelled flag 防止旧响应（切换登录态后）覆盖新响应
   useEffect(() => {
-    if (cidRef.current) {
-      fetchPlayData(cidRef.current, defaultQn, true).catch((e) => {
-        console.warn('Failed to refresh quality list after login change:', e);
-      });
-    }
+    if (!cidRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getPlayUrl(bvid, cidRef.current, defaultQn);
+        if (cancelled) return;
+        setPlayData(data);
+        setCurrentQn(data.quality);
+        if (data.accept_quality?.length) {
+          setQualities(
+            data.accept_quality.map((q, i) => ({
+              qn: q,
+              desc: data.accept_description?.[i] ?? String(q),
+            })),
+          );
+        }
+      } catch (e) {
+        if (!cancelled) console.warn('Failed to refresh quality list after login change:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [isLoggedIn]);
 
-  return { video, playData, loading, error, qualities, currentQn, changeQuality };
+  return { video, playData, loading, error, qualities, currentQn, changeQuality, initialTime };
 }

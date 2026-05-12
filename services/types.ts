@@ -1,3 +1,14 @@
+/**
+ * 三种播放器（视频详情、首页大卡、直播）暴露的统一 ref 接口。
+ * 不一定每个实现都全部支持，未实现的方法可空操作。
+ */
+export interface IVideoPlayer {
+  seek: (timeSec: number) => void;
+  pause: () => void;
+  resume: () => void;
+  getCurrentTime: () => number;
+}
+
 export interface VideoItem {
   bvid: string;
   aid: number;

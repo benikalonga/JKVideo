@@ -5,11 +5,33 @@ import type { PlayUrlResponse, DashAudioItem } from '../services/types';
  * 将 Bilibili DASH 响应写成 MPD 文件，返回 file:// URI 供 ExoPlayer 播放。
  * 选取 id === qn 的视频流（找不到则取第一条），带宽最高的音频流。
  */
-export async function buildDashMpdUri(playData: PlayUrlResponse, qn: number): Promise<string> {
+export async function buildDashMpdUri(
+  playData: PlayUrlResponse,
+  qn: number,
+  bvid?: string,
+): Promise<string> {
   const xml = buildMpdXml(playData, qn);
-  const path = `${FileSystem.cacheDirectory}bili_dash_${qn}.mpd`;
+  // 带 bvid 区分，避免不同视频在同一 qn 上复用同一文件名导致命中过期 MPD
+  const suffix = bvid ? `${bvid}_${qn}` : String(qn);
+  const path = `${FileSystem.cacheDirectory}bili_dash_${suffix}.mpd`;
   await FileSystem.writeAsStringAsync(path, xml, { encoding: FileSystem.EncodingType.UTF8 });
   return path;
+}
+
+/** 删除指定视频的所有清晰度 MPD 缓存（详情页卸载时调用） */
+export async function cleanupDashMpd(bvid: string): Promise<void> {
+  if (!bvid || !FileSystem.cacheDirectory) return;
+  try {
+    const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
+    const targets = files.filter(f => f.startsWith(`bili_dash_${bvid}_`) && f.endsWith('.mpd'));
+    await Promise.all(
+      targets.map(f =>
+        FileSystem.deleteAsync(`${FileSystem.cacheDirectory}${f}`, { idempotent: true }),
+      ),
+    );
+  } catch {
+    // 忽略，缓存清理失败不影响功能
+  }
 }
 
 function isDolbyVision(codecs: string): boolean {

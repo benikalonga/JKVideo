@@ -6,6 +6,8 @@ import { useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDownloadStore } from '../store/downloadStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { usePlayProgressStore } from '../store/playProgressStore';
+import { initMiniExclusion } from '../store/miniExclusion';
 import { useTheme } from '../utils/theme';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { LiveMiniPlayer } from '../components/LiveMiniPlayer';
@@ -35,6 +37,8 @@ function RootLayout() {
     restore();
     loadDownloads();
     restoreSettings();
+    usePlayProgressStore.getState().hydrate();
+    initMiniExclusion();
   }, []);
 
   if (!fontsLoaded) return null;

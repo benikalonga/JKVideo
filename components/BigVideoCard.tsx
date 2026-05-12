@@ -24,7 +24,9 @@ import { coverImageUrl } from "../utils/imageUrl";
 import { useSettingsStore } from "../store/settingsStore";
 import { useTheme } from "../utils/theme";
 import { useLiveStore } from "../store/liveStore";
+import { usePlayUrlCache } from "../store/playUrlCache";
 import { formatCount, formatDuration } from "../utils/format";
+import { useVisibleBigKeyStore } from "../store/visibleBigKeyStore";
 import type { VideoItem } from "../services/types";
 
 const HEADERS = {
@@ -45,17 +47,16 @@ function clamp(v: number, lo: number, hi: number) {
 
 interface Props {
   item: VideoItem;
-  isVisible: boolean;
   isScrolling?: boolean;
   onPress: () => void;
 }
 
 export const BigVideoCard = React.memo(function BigVideoCard({
   item,
-  isVisible,
   isScrolling,
   onPress,
 }: Props) {
+  const isVisible = useVisibleBigKeyStore((s) => s.key) === item.bvid;
   const { width: SCREEN_W } = useWindowDimensions();
   const trafficSaving = useSettingsStore(s => s.trafficSaving);
   const liveActive = useLiveStore(s => s.isActive);
@@ -79,6 +80,7 @@ export const BigVideoCard = React.memo(function BigVideoCard({
   const durationRef = useRef(0);
   const seekingRef = useRef(false);
   const [seekLabel, setSeekLabel] = useState<string | null>(null);
+  const lastProgressUpdate = useRef(0);
 
   // Reset video state when the item changes
   useEffect(() => {
@@ -98,6 +100,18 @@ export const BigVideoCard = React.memo(function BigVideoCard({
     let cancelled = false;
     (async () => {
       try {
+        // 命中缓存（5min TTL）直接复用
+        const cached = usePlayUrlCache.getState().get(item.bvid, 16);
+        if (cached) {
+          if (cancelled) return;
+          if (cached.playData.dash) {
+            setIsDash(true);
+            setVideoUrl(cached.mpdUri ?? cached.playData.dash.video[0]?.baseUrl);
+          } else {
+            setVideoUrl(cached.playData.durl?.[0]?.url);
+          }
+          return;
+        }
         let cid = item.cid;
         if (!cid) {
           const detail = await getVideoDetail(item.bvid);
@@ -113,13 +127,22 @@ export const BigVideoCard = React.memo(function BigVideoCard({
         if (playData.dash) {
           if (!cancelled) setIsDash(true);
           try {
-            const mpdUri = await buildDashMpdUri(playData, 16);
-            if (!cancelled) setVideoUrl(mpdUri);
+            const mpdUri = await buildDashMpdUri(playData, 16, item.bvid);
+            if (!cancelled) {
+              setVideoUrl(mpdUri);
+              usePlayUrlCache.getState().set(item.bvid, 16, { playData, mpdUri });
+            }
           } catch {
-            if (!cancelled) setVideoUrl(playData.dash.video[0]?.baseUrl);
+            if (!cancelled) {
+              setVideoUrl(playData.dash.video[0]?.baseUrl);
+              usePlayUrlCache.getState().set(item.bvid, 16, { playData });
+            }
           }
         } else {
-          if (!cancelled) setVideoUrl(playData.durl?.[0]?.url);
+          if (!cancelled) {
+            setVideoUrl(playData.durl?.[0]?.url);
+            usePlayUrlCache.getState().set(item.bvid, 16, { playData });
+          }
         }
       } catch (e) {
         console.warn("BigVideoCard: failed to load play URL", e);
@@ -252,8 +275,14 @@ export const BigVideoCard = React.memo(function BigVideoCard({
               seekableDuration: dur,
               playableDuration: buf,
             }) => {
-              if (!seekingRef.current) setCurrentTime(ct);
-              if (dur > 0) setDuration(dur);
+              currentTimeRef.current = ct;
+              if (dur > 0) durationRef.current = dur;
+              if (seekingRef.current) return;
+              const now = Date.now();
+              if (now - lastProgressUpdate.current < 450) return;
+              lastProgressUpdate.current = now;
+              setCurrentTime(ct);
+              if (dur > 0 && Math.abs(dur - duration) > 1) setDuration(dur);
               setBuffered(buf);
             }}
           />

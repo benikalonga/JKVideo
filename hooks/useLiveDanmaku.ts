@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getLiveDanmakuHistory } from '../services/bilibili';
 import type { DanmakuItem } from '../services/types';
 
-const POLL_INTERVAL = 3000;
+const POLL_INTERVAL = 1500;
 
 // 匹配 admin 消息中的礼物信息，如 "xxx 赠送了 辣条 x5" 或 "xxx 投喂 小心心 ×1"
 const GIFT_PATTERN = /(?:赠送|投喂)\s*(?:了\s*)?(.+?)\s*[xX×]\s*(\d+)/;
@@ -36,9 +36,10 @@ export function useLiveDanmaku(roomId: number): {
         const { danmakus: items, adminMsgs } = await getLiveDanmakuHistory(roomId);
         if (cancelled) return;
 
-        // 去重弹幕
+        // 去重弹幕：以 uname + text + timeline 为 key
+        // 用 timeline 区分"同一人重复发同句"的合法重复（gethistory 多次轮询会返回相同尾部数据，靠 timeline 过滤掉）
         const newItems = items.filter(item => {
-          const key = `${item.uname ?? ''}:${item.text}`;
+          const key = `${item.uname ?? ''}:${item.text}:${item.timeline ?? ''}`;
           if (seenTextsRef.current.has(key)) return false;
           seenTextsRef.current.add(key);
           return true;
@@ -50,7 +51,6 @@ export function useLiveDanmaku(roomId: number): {
         // 解析 admin 消息中的礼物
         const newGifts: Record<string, number> = {};
         for (const msg of adminMsgs) {
-          console.log(msg,123)
           // 去重 admin 消息
           if (seenAdminRef.current.has(msg)) continue;
           seenAdminRef.current.add(msg);

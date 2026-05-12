@@ -36,11 +36,11 @@ import {
   toListRows,
   type ListRow,
   type BigRow,
-  type LiveRow,
 } from "../utils/videoRows";
 import { BigVideoCard } from "../components/BigVideoCard";
 import { FollowedLiveStrip } from "../components/FollowedLiveStrip";
 import { useTheme } from "../utils/theme";
+import { useVisibleBigKeyStore } from "../store/visibleBigKeyStore";
 import type { LiveRoom } from "../services/types";
 
 const HEADER_H = 44;
@@ -69,8 +69,7 @@ const LIVE_AREAS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { pages, liveRooms, loading, refreshing, load, refresh } =
-    useVideoList();
+  const { pages, loading, refreshing, load, refresh } = useVideoList();
   const {
     rooms,
     loading: liveLoading,
@@ -85,8 +84,7 @@ export default function HomeScreen() {
   const [liveAreaId, setLiveAreaId] = useState(0);
 
   const theme = useTheme();
-  const [visibleBigKey, setVisibleBigKey] = useState<string | null>(null);
-  const rows = useMemo(() => toListRows(pages, liveRooms), [pages, liveRooms]);
+  const rows = useMemo(() => toListRows(pages), [pages]);
   const pagerRef = useRef<PagerView>(null);
 
   const hotListRef = useRef<FlatList>(null);
@@ -97,57 +95,113 @@ export default function HomeScreen() {
       const bigRow = viewableItems.find(
         (v) => v.item && (v.item as ListRow).type === "big",
       );
-      setVisibleBigKey(bigRow ? (bigRow.item as BigRow).item.bvid : null);
+      useVisibleBigKeyStore.getState().setKey(bigRow ? (bigRow.item as BigRow).item.bvid : null);
     },
   ).current;
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // 滚动累计阈值：方向反转后需累计滚动该距离才触发显隐切换
+  const SCROLL_THRESHOLD = 40;
+  // 显隐过渡时长
+  const HEADER_ANIM_MS = 100;
 
-  const headerTranslate = scrollY.interpolate({
+  const headerOffset = useRef(new Animated.Value(0)).current; // 0 = 显示，HEADER_H = 隐藏
+  const liveHeaderOffset = useRef(new Animated.Value(0)).current;
+
+  const headerTranslate = headerOffset.interpolate({
     inputRange: [0, HEADER_H],
     outputRange: [0, -HEADER_H],
     extrapolate: "clamp",
   });
-
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_H * 0.2],
-    outputRange: [1, 0],
+  const headerOpacity = headerOffset.interpolate({
+    inputRange: [0, HEADER_H * 0.6, HEADER_H],
+    outputRange: [1, 1, 0],
     extrapolate: "clamp",
   });
 
-  // 直播列表也共用同一个 scrollY
-  const liveScrollY = useRef(new Animated.Value(0)).current;
-
-  const liveHeaderTranslate = liveScrollY.interpolate({
+  const liveHeaderTranslate = liveHeaderOffset.interpolate({
     inputRange: [0, HEADER_H],
     outputRange: [0, -HEADER_H],
     extrapolate: "clamp",
   });
-
-  const liveHeaderOpacity = liveScrollY.interpolate({
-    inputRange: [0, HEADER_H * 0.2],
-    outputRange: [1, 0],
+  const liveHeaderOpacity = liveHeaderOffset.interpolate({
+    inputRange: [0, HEADER_H * 0.6, HEADER_H],
+    outputRange: [1, 1, 0],
     extrapolate: "clamp",
   });
+
+  const hotScrollState = useRef({ lastY: 0, acc: 0, dir: 0, hidden: false }).current;
+  const liveScrollState = useRef({ lastY: 0, acc: 0, dir: 0, hidden: false }).current;
+
+  const animateHeader = useCallback(
+    (offset: Animated.Value, hide: boolean) => {
+      Animated.timing(offset, {
+        toValue: hide ? HEADER_H : 0,
+        duration: HEADER_ANIM_MS,
+        useNativeDriver: true,
+      }).start();
+    },
+    [],
+  );
+
+  const updateHeaderForScroll = useCallback(
+    (
+      y: number,
+      state: { lastY: number; acc: number; dir: number; hidden: boolean },
+      offset: Animated.Value,
+    ) => {
+      // 顶部强制显示
+      if (y <= 0) {
+        if (state.hidden) {
+          state.hidden = false;
+          animateHeader(offset, false);
+        }
+        state.lastY = 0;
+        state.acc = 0;
+        state.dir = 0;
+        return;
+      }
+      const dy = y - state.lastY;
+      state.lastY = y;
+      if (Math.abs(dy) < 1) return;
+      const dir = dy > 0 ? 1 : -1; // 1=向下滚（隐藏），-1=向上滚（显示）
+      if (dir !== state.dir) {
+        state.dir = dir;
+        state.acc = 0;
+      }
+      state.acc += Math.abs(dy);
+      if (state.acc < SCROLL_THRESHOLD) return;
+      const shouldHide = dir === 1;
+      if (shouldHide !== state.hidden) {
+        state.hidden = shouldHide;
+        animateHeader(offset, shouldHide);
+      }
+      state.acc = 0;
+    },
+    [animateHeader],
+  );
 
   useEffect(() => {
     load();
   }, []);
 
-  const onScroll = useMemo(
-    () =>
-      Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-        useNativeDriver: true,
-      }),
-    [],
+  const onScroll = useCallback(
+    (e: any) =>
+      updateHeaderForScroll(
+        e.nativeEvent.contentOffset.y,
+        hotScrollState,
+        headerOffset,
+      ),
+    [updateHeaderForScroll],
   );
 
-  const onLiveScroll = useMemo(
-    () =>
-      Animated.event([{ nativeEvent: { contentOffset: { y: liveScrollY } } }], {
-        useNativeDriver: true,
-      }),
-    [],
+  const onLiveScroll = useCallback(
+    (e: any) =>
+      updateHeaderForScroll(
+        e.nativeEvent.contentOffset.y,
+        liveScrollState,
+        liveHeaderOffset,
+      ),
+    [updateHeaderForScroll],
   );
 
   const handleTabPress = useCallback(
@@ -195,39 +249,13 @@ export default function HomeScreen() {
     [liveAreaId, liveLoad],
   );
 
-  const visibleBigKeyRef = useRef(visibleBigKey);
-  visibleBigKeyRef.current = visibleBigKey;
-
   const renderItem = useCallback(({ item: row }: { item: ListRow }) => {
     if (row.type === "big") {
       return (
         <BigVideoCard
           item={row.item}
-          isVisible={visibleBigKeyRef.current === row.item.bvid}
           onPress={() => router.push(`/video/${row.item.bvid}` as any)}
         />
-      );
-    }
-    if (row.type === "live") {
-      return (
-        <View style={styles.row}>
-          <View style={styles.leftCol}>
-            <LiveCard
-              isLivePulse
-              item={row.left}
-              onPress={() => router.push(`/live/${row.left.roomid}` as any)}
-            />
-          </View>
-          {row.right && (
-            <View style={styles.rightCol}>
-              <LiveCard
-                isLivePulse
-                item={row.right}
-                onPress={() => router.push(`/live/${row.right!.roomid}` as any)}
-              />
-            </View>
-          )}
-        </View>
       );
     }
     const right = row.right;
@@ -303,12 +331,10 @@ export default function HomeScreen() {
             ref={hotListRef as any}
             style={styles.listContainer}
             data={rows}
-            keyExtractor={(row: any, index: number) =>
+            keyExtractor={(row: any) =>
               row.type === "big"
                 ? `big-${row.item.bvid}`
-                : row.type === "live"
-                  ? `live-${index}-${row.left.roomid}-${row.right?.roomid ?? "empty"}`
-                  : `pair-${row.left.bvid}-${row.right?.bvid ?? "empty"}`
+                : `pair-${row.left.bvid}-${row.right?.bvid ?? "empty"}`
             }
             contentContainerStyle={{
               paddingTop: insets.top + NAV_H + 6,
@@ -324,7 +350,6 @@ export default function HomeScreen() {
             }
             onEndReached={() => load()}
             onEndReachedThreshold={0.5}
-            extraData={visibleBigKey}
             viewabilityConfig={VIEWABILITY_CONFIG}
             onViewableItemsChanged={onViewableItemsChangedRef}
             ListFooterComponent={
@@ -603,7 +628,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 16,
-    backgroundColor: "#f0f0f0",
   },
   areaTabActive: {
     backgroundColor: "#00AEEC",

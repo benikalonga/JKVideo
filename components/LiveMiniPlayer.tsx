@@ -1,12 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   Image,
   StyleSheet,
   Animated,
-  PanResponder,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -15,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLiveStore } from '../store/liveStore';
 import { useVideoStore } from '../store/videoStore';
 import { proxyImageUrl } from '../utils/imageUrl';
+import { useMiniDrag } from '../hooks/useMiniDrag';
 
 const MINI_W = 160;
 const MINI_H = 90;
@@ -25,70 +24,29 @@ const LIVE_HEADERS = {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 };
 
-function snapRelease(
-  pan: Animated.ValueXY,
-  curX: number,
-  curY: number,
-  sw: number,
-  sh: number,
-) {
-  const snapRight = 0;
-  const snapLeft = -(sw - MINI_W - 24);
-  const snapX = curX < snapLeft / 2 ? snapLeft : snapRight;
-  const clampedY = Math.max(-sh + MINI_H + 60, Math.min(60, curY));
-  Animated.spring(pan, {
-    toValue: { x: snapX, y: clampedY },
-    useNativeDriver: false,
-    tension: 120,
-    friction: 10,
-  }).start();
-}
-
 export function LiveMiniPlayer() {
   const { isActive, roomId, title, cover, hlsUrl, clearLive } = useLiveStore();
   const videoMiniActive = useVideoStore(s => s.isActive);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const pan = useRef(new Animated.ValueXY()).current;
-  const isDragging = useRef(false);
+  // 关闭时先把 Video 暂停一帧，让 native 释放连接，再 unmount
+  const [paused, setPaused] = useState(false);
 
-  // 用 ref 保持最新值，避免 PanResponder 闭包捕获过期的初始值
-  const storeRef = useRef({ roomId, clearLive, router });
-  storeRef.current = { roomId, clearLive, router };
+  // 切换到不同直播间时重置 paused
+  useEffect(() => {
+    if (isActive) setPaused(false);
+  }, [hlsUrl, isActive]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        isDragging.current = false;
-        pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
-        pan.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: (_, gs) => {
-        if (Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5) {
-          isDragging.current = true;
-        }
-        pan.x.setValue(gs.dx);
-        pan.y.setValue(gs.dy);
-      },
-      onPanResponderRelease: (evt) => {
-        pan.flattenOffset();
-        if (!isDragging.current) {
-          const { locationX, locationY } = evt.nativeEvent;
-          const { roomId: rid, clearLive: clear, router: r } = storeRef.current;
-          if (locationX > MINI_W - 28 && locationY < 28) {
-            clear();
-          } else {
-            r.push(`/live/${rid}` as any);
-          }
-          return;
-        }
-        const { width: sw, height: sh } = Dimensions.get('window');
-        snapRelease(pan, (pan.x as any)._value, (pan.y as any)._value, sw, sh);
-      },
-      onPanResponderTerminate: () => { pan.flattenOffset(); },
-    }),
-  ).current;
+  const { pan, panHandlers } = useMiniDrag({
+    width: MINI_W,
+    height: MINI_H,
+    hitClose: (x, y) => x > MINI_W - 28 && y < 28,
+    onTap: () => router.push(`/live/${roomId}` as any),
+    onClose: () => {
+      setPaused(true);
+      requestAnimationFrame(() => clearLive());
+    },
+  });
 
   if (!isActive) return null;
 
@@ -99,7 +57,7 @@ export function LiveMiniPlayer() {
     return (
       <Animated.View
         style={[styles.container, { bottom: bottomOffset, transform: pan.getTranslateTransform() }]}
-        {...panResponder.panHandlers}
+        {...panHandlers}
       >
         <Image source={{ uri: proxyImageUrl(cover) }} style={styles.videoArea} />
         <View style={styles.liveBadge} pointerEvents="none">
@@ -120,7 +78,7 @@ export function LiveMiniPlayer() {
   return (
     <Animated.View
       style={[styles.container, { bottom: bottomOffset, transform: pan.getTranslateTransform() }]}
-      {...panResponder.panHandlers}
+      {...panHandlers}
     >
       {/* pointerEvents="none" 防止 Video 原生层吞噬触摸事件 */}
       <View style={styles.videoArea} pointerEvents="none">
@@ -131,7 +89,7 @@ export function LiveMiniPlayer() {
           resizeMode="cover"
           controls={false}
           muted={false}
-          paused={false}
+          paused={paused}
           repeat={false}
           onError={clearLive}
         />
@@ -141,7 +99,7 @@ export function LiveMiniPlayer() {
         <Text style={styles.liveText}>LIVE</Text>
       </View>
       <Text style={styles.titleText} numberOfLines={1}>{title}</Text>
-      {/* 关闭按钮视觉层，点击逻辑由 onPanResponderRelease 坐标判断 */}
+      {/* 关闭按钮视觉层，点击逻辑由 hitClose 坐标判断 */}
       <View style={styles.closeBtn}>
         <Ionicons name="close" size={14} color="#fff" />
       </View>

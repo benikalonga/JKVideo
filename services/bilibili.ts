@@ -79,6 +79,32 @@ function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return promise;
 }
 
+/**
+ * 指数退避重试包装。仅对网络层面错误（无 response、5xx、超时）重试；
+ * 业务错误（如 401/403/-352）直接抛出，不重试。
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = 2,
+  backoff = [500, 1500],
+): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastErr = e;
+      const status = e?.response?.status;
+      const isNetwork = !e?.response || e?.code === 'ECONNABORTED';
+      const is5xx = typeof status === 'number' && status >= 500;
+      if (!isNetwork && !is5xx) throw e;
+      if (attempt === retries) throw e;
+      await new Promise((r) => setTimeout(r, backoff[attempt] ?? backoff[backoff.length - 1]));
+    }
+  }
+  throw lastErr;
+}
+
 // WBI key cache (rotates ~daily)
 let wbiKeys: { imgKey: string; subKey: string } | null = null;
 let wbiKeysTimestamp = 0;
@@ -128,10 +154,12 @@ export async function getPopularVideos(pn = 1): Promise<VideoItem[]> {
 }
 
 export function getVideoDetail(bvid: string): Promise<VideoItem> {
-  return dedupe(dedupeKey('/x/web-interface/view', { bvid }), async () => {
-    const res = await api.get('/x/web-interface/view', { params: { bvid } });
-    return res.data.data as VideoItem;
-  });
+  return dedupe(dedupeKey('/x/web-interface/view', { bvid }), () =>
+    withRetry(async () => {
+      const res = await api.get('/x/web-interface/view', { params: { bvid } });
+      return res.data.data as VideoItem;
+    }),
+  );
 }
 
 export async function getVideoRelated(bvid: string): Promise<VideoItem[]> {
@@ -147,10 +175,12 @@ export function getPlayUrl(bvid: string, cid: number, qn = 64): Promise<PlayUrlR
   const params = isAndroid
     ? { bvid, cid, qn, fnval: FNVAL_ANDROID, fourk: 1 }
     : { bvid, cid, qn, fnval: 0, platform: 'html5', fourk: 1 };
-  return dedupe(dedupeKey('/x/player/playurl', params), async () => {
-    const res = await api.get('/x/player/playurl', { params });
-    return res.data.data as PlayUrlResponse;
-  });
+  return dedupe(dedupeKey('/x/player/playurl', params), () =>
+    withRetry(async () => {
+      const res = await api.get('/x/player/playurl', { params });
+      return res.data.data as PlayUrlResponse;
+    }),
+  );
 }
 
 export async function getPlayUrlForDownload(
@@ -443,8 +473,9 @@ export async function getLiveDanmakuHistory(roomId: number): Promise<{
   danmakus: DanmakuItem[];
   adminMsgs: string[];
 }> {
+  // gethistory 默认返回 ~10 条；尝试带 count 参数拉更多，B 站不支持时会自动忽略
   const res = await api.get(`${LIVE_BASE}/xlive/web-room/v1/dM/gethistory`, {
-    params: { roomid: roomId },
+    params: { roomid: roomId, room_id: roomId, count: 30 },
   });
 
   const room: any[] = res.data?.data?.room ?? [];
@@ -467,7 +498,7 @@ export async function getLiveDanmakuHistory(roomId: number): Promise<{
 }
 
 export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
-  try {
+  return withRetry(async () => {
     if (isWeb) {
       // web 走代理，代理已解压，直接拿文本
       const res = await axios.get(`${COMMENT_BASE}/${cid}.xml`, {
@@ -501,10 +532,10 @@ export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
     }
 
     return parseDanmakuXml(xmlText);
-  } catch (e) {
+  }).catch((e) => {
     console.warn('getDanmaku failed:', e);
-    return [];
-  }
+    return [] as DanmakuItem[];
+  });
 }
 
 export async function getFollowedLiveRooms(): Promise<LiveRoom[]> {

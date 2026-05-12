@@ -16,6 +16,8 @@ import {
   Modal,
   Image,
   PanResponder,
+  ActivityIndicator,
+  Animated,
   useWindowDimensions,
 } from "react-native";
 import Video, { VideoRef } from "react-native-video";
@@ -25,11 +27,13 @@ import type {
   PlayUrlResponse,
   VideoShotData,
   DanmakuItem,
+  IVideoPlayer,
 } from "../services/types";
 import { buildDashMpdUri } from "../utils/dash";
 import { getVideoShot } from "../services/bilibili";
 import DanmakuOverlay from "./DanmakuOverlay";
 import { useTheme } from "../utils/theme";
+import { usePlayProgressStore } from "../store/playProgressStore";
 
 const BAR_H = 3;
 // 进度球尺寸
@@ -59,8 +63,8 @@ function findFrameByTime(index: number[], seekTime: number): number {
   return lo;
 }
 
-export interface NativeVideoPlayerRef {
-  seek: (t: number) => void;
+export interface NativeVideoPlayerRef extends IVideoPlayer {
+  /** @deprecated 用 pause()/resume() 代替 */
   setPaused: (v: boolean) => void;
 }
 
@@ -110,6 +114,9 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [paused, setPaused] = useState(false);
+    // seek 后强制触发 react-native-video 重新评估 paused prop 的 hack 用的瞬时叠加态
+    // 单独存储以避免污染 paused（用于图标显示）：seek 完成的一瞬间不让"播放/暂停"图标闪
+    const [seekHackPaused, setSeekHackPaused] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const currentTimeRef = useRef(0);
     const [duration, setDuration] = useState(0);
@@ -118,15 +125,61 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
     const [showQuality, setShowQuality] = useState(false);
 
+    // 倍速
+    const RATE_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
+    const [rate, setRate] = useState(1);
+    const [showRate, setShowRate] = useState(false);
+
+    // 清晰度切换：保留进度 + loading 遮罩
+    const [switching, setSwitching] = useState(false);
+    const pendingSeekRef = useRef<number | null>(null);
+    const prevQnRef = useRef(currentQn);
+    const switchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // 续播：每 5s 持久化一次
+    const lastSaveRef = useRef(0);
+
+    useEffect(() => {
+      // 排除初始挂载（prevQn 或 currentQn === 0）
+      if (
+        prevQnRef.current !== 0 &&
+        currentQn !== 0 &&
+        prevQnRef.current !== currentQn
+      ) {
+        pendingSeekRef.current = currentTimeRef.current;
+        setSwitching(true);
+        // 兜底：8s 内 onLoad 没触发就强制收起遮罩
+        if (switchTimeoutRef.current) clearTimeout(switchTimeoutRef.current);
+        switchTimeoutRef.current = setTimeout(() => setSwitching(false), 8000);
+      }
+      prevQnRef.current = currentQn;
+    }, [currentQn]);
+
+    useEffect(() => {
+      return () => {
+        if (switchTimeoutRef.current) clearTimeout(switchTimeoutRef.current);
+      };
+    }, []);
+
     const [buffered, setBuffered] = useState(0);
     const [isSeeking, setIsSeeking] = useState(false);
     const isSeekingRef = useRef(false);
-    const [touchX, setTouchX] = useState<number | null>(null);
-    const touchXRef = useRef<number | null>(null);
-    const rafRef = useRef<number | null>(null);
+    // 拖动球位置用 Animated.Value 驱动：setValue 不触发 React 重渲染，
+    // 原生层直接更新坐标，跟手 60fps。消除老方案 setState+60ms 节流导致的"段落感"。
+    const touchAnimX = useRef(new Animated.Value(0)).current;
+    // 缩略图换帧仍走 state（精灵图位移涉及 RN 视图属性变化），50ms 节流足够
+    const [thumbFrame, setThumbFrame] = useState<{
+      sheetIdx: number;
+      col: number;
+      row: number;
+      seekTime: number;
+    } | null>(null);
+    const thumbThrottleRef = useRef(0);
     const barOffsetX = useRef(0);
     const barWidthRef = useRef(300);
     const trackRef = useRef<View>(null);
+    // 让稳定的 PanResponder 闭包能读到最新 shots
+    const shotsRef = useRef<VideoShotData | null>(null);
 
     const [shots, setShots] = useState<VideoShotData | null>(null);
     const [showDanmaku, setShowDanmaku] = useState(true);
@@ -137,6 +190,9 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       seek: (t: number) => {
         videoRef.current?.seek(t);
       },
+      pause: () => setPaused(true),
+      resume: () => setPaused(false),
+      getCurrentTime: () => currentTimeRef.current,
       setPaused: (v: boolean) => {
         setPaused(v);
       },
@@ -153,7 +209,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         return;
       }
       if (isDash) {
-        buildDashMpdUri(playData, currentQn)
+        buildDashMpdUri(playData, currentQn, bvid)
           .then(setResolvedUrl)
           .catch(() => setResolvedUrl(playData.dash!.video[0]?.baseUrl));
       } else {
@@ -178,6 +234,25 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
     useEffect(() => {
       durationRef.current = duration;
     }, [duration]);
+
+    useEffect(() => {
+      shotsRef.current = shots;
+    }, [shots]);
+
+    // 非拖动时，球/进度填充随 currentTime 同步（onProgress 驱动）
+    useEffect(() => {
+      if (isSeekingRef.current) return;
+      if (durationRef.current <= 0 || barWidthRef.current <= 0) {
+        touchAnimX.setValue(0);
+        return;
+      }
+      const x = clamp(
+        (currentTime / durationRef.current) * barWidthRef.current,
+        0,
+        barWidthRef.current,
+      );
+      touchAnimX.setValue(x);
+    }, [currentTime, duration]);
 
     // 控制栏自动隐藏逻辑：每次用户交互后重置计时器，3秒无交互则隐藏。使用 useRef 存储计时器 ID 和拖动状态，避免闭包问题导致的计时器失效或误触发。
     const resetHideTimer = useCallback(() => {
@@ -223,7 +298,29 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         }
       });
     }, []);
-    //  使用 PanResponder 实现进度条拖动，支持在拖动过程中显示预览图。通过 touchXRef 和 rafRef 优化拖动性能，避免频繁更新状态导致的卡顿。用户松开拖动时，根据最终位置计算对应的时间点并跳转，同时清理状态和隐藏预览图。
+    // 拖动中按 50ms 节流计算精灵图帧索引；球位置不走这里，由 Animated.setValue 直接更新
+    const updateThumbFrame = useCallback((x: number) => {
+      const shotsData = shotsRef.current;
+      if (!shotsData || durationRef.current <= 0 || barWidthRef.current <= 0) return;
+      const ratio = clamp(x / barWidthRef.current, 0, 1);
+      const seekTime = ratio * durationRef.current;
+      const { img_x_len, img_y_len, image, index } = shotsData;
+      const framesPerSheet = img_x_len * img_y_len;
+      const totalFrames = framesPerSheet * image.length;
+      const frameIdx = index?.length
+        ? clamp(findFrameByTime(index, seekTime), 0, index.length - 1)
+        : clamp(Math.floor(ratio * (totalFrames - 1)), 0, totalFrames - 1);
+      const local = frameIdx % framesPerSheet;
+      setThumbFrame({
+        sheetIdx: Math.floor(frameIdx / framesPerSheet),
+        col: local % img_x_len,
+        row: Math.floor(local / img_x_len),
+        seekTime,
+      });
+    }, []);
+
+    // PanResponder 进度条拖动：球/进度填充走 Animated.setValue（无 React 渲染），
+    // 缩略图换帧 50ms 节流；松手时 seek 到目标时间并恢复自动同步。
     const panResponder = useRef(
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
@@ -234,40 +331,39 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
           setShowControls(true);
           if (hideTimer.current) clearTimeout(hideTimer.current);
           const x = clamp(gs.x0 - barOffsetX.current, 0, barWidthRef.current);
-          touchXRef.current = x;
-          setTouchX(x);
+          touchAnimX.setValue(x);
+          thumbThrottleRef.current = 0;
+          updateThumbFrame(x);
         },
         onPanResponderMove: (_, gs) => {
-          touchXRef.current = clamp(
+          const x = clamp(
             gs.moveX - barOffsetX.current,
             0,
             barWidthRef.current,
           );
-          if (!rafRef.current) {
-            rafRef.current = requestAnimationFrame(() => {
-              setTouchX(touchXRef.current);
-              rafRef.current = null;
-            });
+          // 关键：setValue 不触发 React 渲染，进度球/进度填充由原生层直接刷新
+          touchAnimX.setValue(x);
+          const now = Date.now();
+          if (now - thumbThrottleRef.current >= 50) {
+            thumbThrottleRef.current = now;
+            updateThumbFrame(x);
           }
         },
-        //  用户松开拖动，或拖动被中断（如来电），都视为结束拖动，需要清理状态和隐藏预览
+        // 用户松开拖动，或拖动被中断（如来电），都视为结束拖动
         onPanResponderRelease: (_, gs) => {
-          if (rafRef.current) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
-          }
-          const ratio = clamp(
-            (gs.moveX - barOffsetX.current) / barWidthRef.current,
+          const x = clamp(
+            gs.moveX - barOffsetX.current,
             0,
-            1,
+            barWidthRef.current,
           );
+          const ratio = barWidthRef.current > 0 ? x / barWidthRef.current : 0;
           const t = ratio * durationRef.current;
+          touchAnimX.setValue(x);
           videoRef.current?.seek(t);
           setCurrentTime(t);
-          touchXRef.current = null;
-          setTouchX(null);
           isSeekingRef.current = false;
           setIsSeeking(false);
+          setThumbFrame(null);
           if (hideTimer.current) clearTimeout(hideTimer.current);
           hideTimer.current = setTimeout(
             () => setShowControls(false),
@@ -275,71 +371,46 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
           );
         },
         onPanResponderTerminate: () => {
-          if (rafRef.current) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
-          }
-          touchXRef.current = null;
-          setTouchX(null);
           isSeekingRef.current = false;
           setIsSeeking(false);
+          setThumbFrame(null);
         },
       }),
     ).current;
-    // 进度条上触摸位置对应的时间点比例，0-1。非拖动状态为 null
-    const touchRatio =
-      touchX !== null ? clamp(touchX / barWidthRef.current, 0, 1) : null;
-    const progressRatio =
-      duration > 0 ? clamp(currentTime / duration, 0, 1) : 0;
     const bufferedRatio = duration > 0 ? clamp(buffered / duration, 0, 1) : 0;
 
-    const THUMB_DISPLAY_W = 120; // scaled display width
+    // 缩略图尺寸：竖屏播放器较窄给 160，全屏给 220 提升可读性
+    const THUMB_DISPLAY_W = isFullscreen ? 220 : 160;
+
+    // 进度球水平偏移：active 态球更大，translate 偏移需对齐圆心
+    const ballTranslate = React.useMemo(
+      () => Animated.subtract(touchAnimX, (isSeeking ? BALL_ACTIVE : BALL) / 2),
+      [isSeeking, touchAnimX],
+    );
 
     const renderThumbnail = () => {
-      if (touchRatio === null || !shots || !isSeeking) return null;
+      if (!thumbFrame || !shots || !isSeeking) return null;
       const {
         img_x_size: TW,
         img_y_size: TH,
         img_x_len,
         img_y_len,
         image,
-        index,
       } = shots;
-      const framesPerSheet = img_x_len * img_y_len;
-      const totalFrames = framesPerSheet * image.length;
-      const seekTime = touchRatio * duration;
-      // 通过时间戳索引找到最接近的帧，若无索引则均匀映射到总帧数上
-      const frameIdx =
-        index?.length && duration > 0
-          ? clamp(findFrameByTime(index, seekTime), 0, index.length - 1)
-          : clamp(
-              Math.floor(touchRatio * (totalFrames - 1)),
-              0,
-              totalFrames - 1,
-            );
-
-      const sheetIdx = Math.floor(frameIdx / framesPerSheet);
-      const local = frameIdx % framesPerSheet;
-      const col = local % img_x_len;
-      const row = Math.floor(local / img_x_len);
-      //  根据单帧图尺寸和预设的显示宽度计算缩放后的显示尺寸，保持宽高比
+      const { sheetIdx, col, row, seekTime } = thumbFrame;
+      // 根据单帧图尺寸和预设的显示宽度计算缩放后的显示尺寸，保持宽高比
       const scale = THUMB_DISPLAY_W / TW;
       const DW = THUMB_DISPLAY_W;
       const DH = Math.round(TH * scale);
-
-      const trackLeft = barOffsetX.current;
-      const absLeft = clamp(
-        trackLeft + (touchX ?? 0) - DW / 2,
-        0,
-        SCREEN_W - DW,
-      );
+      // 缩略图固定到播放器水平中点，不跟随手指 / 进度球移动
+      const fixedLeft = Math.round(SCREEN_W / 2 - DW / 2);
+      const raw = image[sheetIdx];
+      if (!raw) return null;
       // 兼容处理图床地址，确保以 http(s) 协议开头
-      const sheetUrl = image[sheetIdx].startsWith("//")
-        ? `https:${image[sheetIdx]}`
-        : image[sheetIdx];
+      const sheetUrl = raw.startsWith("//") ? `https:${raw}` : raw;
       return (
         <View
-          style={[styles.thumbPreview, { left: absLeft, width: DW }]}
+          style={[styles.thumbPreview, { left: fixedLeft, width: DW }]}
           pointerEvents="none"
         >
           <View
@@ -347,7 +418,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
               width: DW,
               height: DH,
               overflow: "hidden",
-              borderRadius: 4,
+              borderRadius: 6,
             }}
           >
             <Image
@@ -389,7 +460,8 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             style={StyleSheet.absoluteFill}
             resizeMode="contain"
             controls={false}
-            paused={!!(forcePaused || paused)}
+            paused={!!(forcePaused || paused || seekHackPaused)}
+            rate={rate}
             progressUpdateInterval={500}
             onProgress={({
               currentTime: ct,
@@ -398,6 +470,14 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             }) => {
               currentTimeRef.current = ct;
               onTimeUpdate?.(ct);
+              // 续播持久化（5s 节流）
+              if (bvid && dur > 0) {
+                const nowSave = Date.now();
+                if (nowSave - lastSaveRef.current > 5000) {
+                  lastSaveRef.current = nowSave;
+                  usePlayProgressStore.getState().save(bvid, ct, dur);
+                }
+              }
               // 拖动进度条时跳过 UI 更新，避免与用户拖动冲突
               if (isSeekingRef.current) return;
               const now = Date.now();
@@ -408,26 +488,57 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
               setBuffered(buf);
             }}
             onLoad={() => {
-              if (initialTime && initialTime > 0) {
+              // 切清晰度后跳回原进度
+              const pending = pendingSeekRef.current;
+              let didSeek = false;
+              if (pending !== null && pending > 0) {
+                videoRef.current?.seek(pending);
+                pendingSeekRef.current = null;
+                didSeek = true;
+              } else if (initialTime && initialTime > 0) {
                 videoRef.current?.seek(initialTime);
+                didSeek = true;
               }
-              // seek 后部分播放器不恢复播放，先暂停再恢复，强制触发 prop 变化
-              if (!forcePaused) {
-                setPaused(true);
-                requestAnimationFrame(() => setPaused(false));
+              if (switching) {
+                setSwitching(false);
+                if (switchTimeoutRef.current) {
+                  clearTimeout(switchTimeoutRef.current);
+                  switchTimeoutRef.current = null;
+                }
+              }
+              // seek 后部分播放器不自动恢复播放，需短暂 paused→false 触发 prop 变化
+              // 仅在确实 seek 时执行；走 seekHackPaused（不污染图标显示态），避免播放/暂停图标闪烁
+              if (didSeek && !forcePaused && !paused) {
+                setSeekHackPaused(true);
+                requestAnimationFrame(() => setSeekHackPaused(false));
               }
             }}
             onError={(e) => {
-              // 杜比视界播放失败时自动降级到 1080P
-              if (currentQn === 126) {
-                onQualityChange(80);
-                return;
+              // 按降级链找下一档可用清晰度（从当前档位的下一档起，跳过不在 qualities 列表里的）
+              const FALLBACK_CHAIN = [126, 112, 80, 64, 32, 16];
+              const idx = FALLBACK_CHAIN.indexOf(currentQn);
+              if (idx >= 0) {
+                const acceptable = new Set(qualities.map(q => q.qn));
+                for (let i = idx + 1; i < FALLBACK_CHAIN.length; i++) {
+                  const next = FALLBACK_CHAIN[i];
+                  if (acceptable.has(next)) {
+                    onQualityChange(next);
+                    return;
+                  }
+                }
               }
               console.warn("Video playback error:", e);
             }}
           />
         ) : (
           <View style={styles.placeholder} />
+        )}
+
+        {switching && (
+          <View style={styles.switchOverlay} pointerEvents="none">
+            <ActivityIndicator color="#fff" size="small" />
+            <Text style={styles.switchText}>切换到 {currentDesc}…</Text>
+          </View>
         )}
 
         {isFullscreen && !!danmakus?.length && (
@@ -490,32 +601,26 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                       },
                     ]}
                   />
-                  <View
+                  <Animated.View
                     style={[
                       styles.trackLayer,
                       {
-                        width: `${progressRatio * 100}%` as any,
+                        width: touchAnimX,
                         backgroundColor: "#00AEEC",
                       },
                     ]}
                   />
                 </View>
-                {isSeeking && touchX !== null ? (
-                  <View
-                    style={[
-                      styles.ball,
-                      styles.ballActive,
-                      { left: touchX - BALL_ACTIVE / 2 },
-                    ]}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.ball,
-                      { left: progressRatio * barWidthRef.current - BALL / 2 },
-                    ]}
-                  />
-                )}
+                <Animated.View
+                  style={[
+                    styles.ball,
+                    isSeeking && styles.ballActive,
+                    {
+                      left: 0,
+                      transform: [{ translateX: ballTranslate }],
+                    },
+                  ]}
+                />
               </View>
               {/* Controls */}
 
@@ -538,6 +643,12 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                 </Text>
                 <View style={{ flex: 1 }} />
                 <Text style={styles.timeText}>{formatDuration(duration)}</Text>
+                <TouchableOpacity
+                  style={styles.ctrlBtn}
+                  onPress={() => setShowRate(true)}
+                >
+                  <Text style={styles.qualityText}>{rate === 1 ? "倍速" : `${rate}x`}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.ctrlBtn}
                   onPress={() => setShowQuality(true)}
@@ -601,6 +712,42 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* 选倍速 */}
+        <Modal visible={showRate} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            onPress={() => setShowRate(false)}
+          >
+            <View style={[styles.qualityList, { backgroundColor: theme.modalBg }]}>
+              <Text style={[styles.qualityTitle, { color: theme.modalText }]}>选择倍速</Text>
+              {RATE_OPTIONS.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.qualityItem, { borderTopColor: theme.modalBorder }]}
+                  onPress={() => {
+                    setRate(r);
+                    setShowRate(false);
+                    showAndReset();
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.qualityItemText,
+                      { color: theme.modalTextSub },
+                      r === rate && styles.qualityItemActive,
+                    ]}
+                  >
+                    {r === 1 ? "正常" : `${r}x`}
+                  </Text>
+                  {r === rate && (
+                    <Ionicons name="checkmark" size={16} color="#00AEEC" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     );
   },
@@ -610,6 +757,19 @@ const styles = StyleSheet.create({
   container: { backgroundColor: "#000" },
   fsContainer: { flex: 1, backgroundColor: "#000" },
   placeholder: { ...StyleSheet.absoluteFillObject, backgroundColor: "#000" },
+  switchOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  switchText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "500",
+  },
   topBar: {
     position: "absolute",
     top: 0,

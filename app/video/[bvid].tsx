@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
+  InteractionManager,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +24,7 @@ import { useRelatedVideos } from "../../hooks/useRelatedVideos";
 import { formatCount, formatDuration } from "../../utils/format";
 import { proxyImageUrl } from "../../utils/imageUrl";
 import { DownloadSheet } from "../../components/DownloadSheet";
+import { VideoDetailSkeleton } from "../../components/VideoDetailSkeleton";
 import { useTheme } from "../../utils/theme";
 import { useLiveStore } from "../../store/liveStore";
 
@@ -36,6 +39,14 @@ export default function VideoDetailScreen() {
     useLiveStore.getState().clearLive();
   }, []);
 
+  // 骨架屏最短展示时长：即便数据秒回，也至少撑够这么久，避免一闪而过
+  const SKELETON_MIN_MS = 600;
+  const [minSkeletonElapsed, setMinSkeletonElapsed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMinSkeletonElapsed(true), SKELETON_MIN_MS);
+    return () => clearTimeout(t);
+  }, []);
+
   const {
     video,
     playData,
@@ -43,6 +54,7 @@ export default function VideoDetailScreen() {
     qualities,
     currentQn,
     changeQuality,
+    initialTime,
   } = useVideoDetail(bvid as string);
   const [commentSort, setCommentSort] = useState<0 | 2>(2);
   const {
@@ -67,20 +79,36 @@ export default function VideoDetailScreen() {
     load: loadRelated,
   } = useRelatedVideos(bvid as string);
 
-  useEffect(() => { loadRelated(); }, []);
+  // 推荐视频不参与首屏，等导航动画结束再拉，避免与详情/播放流抢 JS 线程
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      loadRelated();
+    });
+    return () => handle.cancel();
+  }, []);
 
   useEffect(() => {
-    if (video?.aid) loadComments();
+    if (!video?.aid) return;
+    const handle = InteractionManager.runAfterInteractions(() => {
+      loadComments();
+    });
+    return () => handle.cancel();
   }, [video?.aid, commentSort]);
 
   useEffect(() => {
     if (!video?.cid) return;
-    getDanmaku(video.cid).then(setDanmakus).catch(() => {});
+    const handle = InteractionManager.runAfterInteractions(() => {
+      getDanmaku(video.cid!).then(setDanmakus).catch(() => {});
+    });
+    return () => handle.cancel();
   }, [video?.cid]);
 
   useEffect(() => {
     if (!video?.owner?.mid) return;
-    getUploaderStat(video.owner.mid).then(setUploaderStat).catch(() => {});
+    const handle = InteractionManager.runAfterInteractions(() => {
+      getUploaderStat(video.owner.mid).then(setUploaderStat).catch(() => {});
+    });
+    return () => handle.cancel();
   }, [video?.owner?.mid]);
 
   return (
@@ -107,6 +135,7 @@ export default function VideoDetailScreen() {
         cid={video?.cid}
         danmakus={danmakus}
         onTimeUpdate={setCurrentTime}
+        initialTime={initialTime}
       />
       <DownloadSheet
         visible={showDownload}
@@ -139,9 +168,9 @@ export default function VideoDetailScreen() {
       )}
 
       {/* Tab content */}
-      {videoLoading ? (
-        <ActivityIndicator style={styles.loader} color="#00AEEC" />
-      ) : video ? (
+      {videoLoading || !video || !minSkeletonElapsed ? (
+        <VideoDetailSkeleton />
+      ) : (
         <>
           {tab === "intro" && (
             <FlatList<import("../../services/types").VideoItem>
@@ -306,7 +335,7 @@ export default function VideoDetailScreen() {
             style={[styles.danmakuTab, tab !== "danmaku" && { display: "none" }]}
           />
         </>
-      ) : null}
+      )}
     </SafeAreaView>
   );
 }
@@ -322,17 +351,33 @@ function SeasonSection({
   onEpisodePress: (bvid: string) => void;
 }) {
   const theme = useTheme();
+  const { width: screenW } = useWindowDimensions();
   const episodes = season.sections?.[0]?.episodes ?? [];
   const currentIndex = episodes.findIndex((ep) => ep.bvid === currentBvid);
   const listRef = useRef<FlatList>(null);
+  // 初次渲染先隐身，scrollToOffset 完成后再显示，彻底消除"先 0 再跳"的可见闪烁
+  const [ready, setReady] = useState(currentIndex <= 0);
 
-  useEffect(() => {
-    if (currentIndex <= 0 || episodes.length === 0) return;
-    const t = setTimeout(() => {
-      listRef.current?.scrollToIndex({ index: currentIndex, viewPosition: 0.5, animated: false });
-    }, 200);
-    return () => clearTimeout(t);
-  }, [currentIndex, episodes.length]);
+  // 计算让当前集水平居中的初始 contentOffset
+  const initialOffset = useMemo(() => {
+    if (currentIndex <= 0) return 0;
+    const ITEM_WIDTH = 120;
+    const STEP = 130; // 120 + 10 gap
+    const PADDING = 12;
+    const itemCenter = PADDING + currentIndex * STEP + ITEM_WIDTH / 2;
+    return Math.max(0, itemCenter - screenW / 2);
+  }, [currentIndex, screenW]);
+
+  // 内容布局完成时（getItemLayout 同步即知尺寸，content size 一就绪就触发）
+  // 同步 scrollToOffset 后立刻显示，避免任何中间帧
+  const handleContentSizeChange = useCallback(() => {
+    if (ready) return;
+    if (currentIndex > 0 && initialOffset > 0) {
+      listRef.current?.scrollToOffset({ offset: initialOffset, animated: false });
+    }
+    // 等到下一帧再显示，确保滚动已落地
+    requestAnimationFrame(() => setReady(true));
+  }, [ready, currentIndex, initialOffset]);
 
   return (
     <View style={[styles.seasonBox, { borderTopColor: theme.border, backgroundColor: theme.card }]}>
@@ -349,7 +394,10 @@ function SeasonSection({
         keyExtractor={(ep) => ep.bvid}
         contentContainerStyle={{ paddingHorizontal: 12, gap: 10 }}
         getItemLayout={(_data, index) => ({ length: 130, offset: 12 + index * 130, index })}
+        contentOffset={{ x: initialOffset, y: 0 }}
+        onContentSizeChange={handleContentSizeChange}
         onScrollToIndexFailed={() => {}}
+        style={{ opacity: ready ? 1 : 0 }}
         renderItem={({ item: ep, index }) => {
           const isCurrent = ep.bvid === currentBvid;
           return (

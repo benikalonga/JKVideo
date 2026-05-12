@@ -1,13 +1,11 @@
-import React, { useRef } from 'react';
-import {
-  View, Text, Image, StyleSheet,
-  Animated, PanResponder, Dimensions,
-} from 'react-native';
+import React from 'react';
+import { View, Text, Image, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoStore } from '../store/videoStore';
 import { proxyImageUrl } from '../utils/imageUrl';
+import { useMiniDrag } from '../hooks/useMiniDrag';
 
 const MINI_W = 160;
 const MINI_H = 90;
@@ -16,57 +14,14 @@ export function MiniPlayer() {
   const { isActive, bvid, title, cover, clearVideo } = useVideoStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const pan = useRef(new Animated.ValueXY()).current;
-  const isDragging = useRef(false);
 
-  // 用 ref 保持最新值，避免 PanResponder 闭包捕获过期的初始值
-  const storeRef = useRef({ bvid, clearVideo, router });
-  storeRef.current = { bvid, clearVideo, router };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        isDragging.current = false;
-        pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
-        pan.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: (_, gs) => {
-        if (Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5) {
-          isDragging.current = true;
-        }
-        pan.x.setValue(gs.dx);
-        pan.y.setValue(gs.dy);
-      },
-      onPanResponderRelease: (evt) => {
-        pan.flattenOffset();
-        if (!isDragging.current) {
-          const { locationX, locationY } = evt.nativeEvent;
-          const { bvid: vid, clearVideo: clear, router: r } = storeRef.current;
-          if (locationX > MINI_W - 28 && locationY < 28) {
-            clear();
-          } else {
-            r.push(`/video/${vid}` as any);
-          }
-          return;
-        }
-        const { width: sw, height: sh } = Dimensions.get('window');
-        const curX = (pan.x as any)._value;
-        const curY = (pan.y as any)._value;
-        const snapRight = 0;
-        const snapLeft = -(sw - MINI_W - 24);
-        const snapX = curX < snapLeft / 2 ? snapLeft : snapRight;
-        const clampedY = Math.max(-sh + MINI_H + 60, Math.min(60, curY));
-        Animated.spring(pan, {
-          toValue: { x: snapX, y: clampedY },
-          useNativeDriver: false,
-          tension: 120,
-          friction: 10,
-        }).start();
-      },
-      onPanResponderTerminate: () => { pan.flattenOffset(); },
-    })
-  ).current;
+  const { pan, panHandlers } = useMiniDrag({
+    width: MINI_W,
+    height: MINI_H,
+    hitClose: (x, y) => x > MINI_W - 28 && y < 28,
+    onTap: () => router.push(`/video/${bvid}` as any),
+    onClose: clearVideo,
+  });
 
   if (!isActive) return null;
 
@@ -75,11 +30,11 @@ export function MiniPlayer() {
   return (
     <Animated.View
       style={[styles.container, { bottom: bottomOffset, transform: pan.getTranslateTransform() }]}
-      {...panResponder.panHandlers}
+      {...panHandlers}
     >
       <Image source={{ uri: proxyImageUrl(cover) }} style={styles.cover} />
       <Text style={styles.title} numberOfLines={1}>{title}</Text>
-      {/* 关闭按钮仅作视觉展示，点击逻辑由 onPanResponderRelease 坐标判断处理 */}
+      {/* 关闭按钮仅作视觉展示，点击逻辑由 hitClose 坐标判断处理 */}
       <View style={styles.closeBtn}>
         <Ionicons name="close" size={14} color="#fff" />
       </View>

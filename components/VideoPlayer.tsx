@@ -15,14 +15,21 @@ interface Props {
   cid?: number;
   danmakus?: DanmakuItem[];
   onTimeUpdate?: (t: number) => void;
+  initialTime?: number;
 }
 
-export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, bvid, cid, danmakus, onTimeUpdate }: Props) {
+export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, bvid, cid, danmakus, onTimeUpdate, initialTime }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
   const { width, height } = useWindowDimensions();
   const VIDEO_HEIGHT = width * 0.5625;
   const needsRotation = !ScreenOrientation && fullscreen;
   const lastTimeRef = useRef(0);
+  const seededRef = useRef(false);
+  // 续播：第一次拿到 initialTime 时塞进 lastTimeRef
+  if (!seededRef.current && typeof initialTime === 'number' && initialTime > 0) {
+    lastTimeRef.current = initialTime;
+    seededRef.current = true;
+  }
   const portraitRef = useRef<NativeVideoPlayerRef>(null);
 
   const handleEnterFullscreen = async () => {
