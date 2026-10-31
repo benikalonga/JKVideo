@@ -35,7 +35,7 @@ npx expo start --web
 Web needs a local proxy for image hotlink protection. Start it in a separate terminal:
 
 ```bash
-node scripts/proxy.js   # Listens on localhost:3001
+npm run proxy   # Runs dev-proxy.js, listens on localhost:3001
 ```
 
 ---

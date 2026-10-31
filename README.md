@@ -100,7 +100,7 @@ npm install
 npx expo start --web
 ```
 
-> Web requires a local proxy server for image anti-hotlinking: `node scripts/proxy.js` (port 3001)
+> Web requires a local proxy server for image anti-hotlinking: `npm run proxy` (port 3001)
 
 ### Direct Install (Android)
 
