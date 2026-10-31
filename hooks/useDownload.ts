@@ -11,7 +11,7 @@ const QUALITY_LABELS: Record<number, string> = {
   80: '1080P', 112: '1080P+', 116: '1080P60',
 };
 
-/** 等待 App 回到前台 */
+/** Wait for the app to return to the foreground */
 function waitForActive(): Promise<void> {
   return new Promise((resolve) => {
     if (AppState.currentState === 'active') { resolve(); return; }
@@ -21,12 +21,12 @@ function waitForActive(): Promise<void> {
   });
 }
 
-/** 当前是否在后台 */
+/** Whether the app is currently in the background */
 function isBackground() {
   return AppState.currentState !== 'active';
 }
 
-/** 读取本地文件实际大小 */
+/** Read the actual size of a local file */
 async function readFileSize(uri: string): Promise<number | undefined> {
   try {
     const info = await FileSystem.getInfoAsync(uri, { size: true });
@@ -56,19 +56,19 @@ export function useDownload() {
       status: 'downloading', progress: 0, createdAt: Date.now(),
     });
 
-    // 最多重新拉取 URL 并重试一次（应对后台时 URL 过期的情况）
+    // Refetch the URL and retry at most once (handles URLs expiring while in the background)
     for (let attempt = 0; attempt < 2; attempt++) {
       const success = await attemptDownload(key, bvid, cid, qn);
       if (success !== 'retry') return;
-      // 需要重试：重新拉取 URL
+      // Retry needed: refetch the URL
       updateTask(key, { status: 'downloading', progress: 0 });
       lastReportedProgress[key] = -1;
     }
 
-    updateTask(key, { status: 'error', error: '下载失败，请重试' });
+    updateTask(key, { status: 'error', error: 'Download failed, please retry' });
   }
 
-  /** 执行一次下载尝试。返回 'done' | 'error' | 'retry' */
+  /** Run one download attempt. Returns 'done' | 'error' | 'retry' */
   async function attemptDownload(
     key: string, bvid: string, cid: number, qn: number,
   ): Promise<'done' | 'error' | 'retry'> {
@@ -104,7 +104,7 @@ export function useDownload() {
 
       const resumable = FileSystem.createDownloadResumable(url, dest, { headers }, progressCallback);
 
-      // 进入后台时主动暂停，抢在 OS 断连之前
+      // Pause proactively when entering the background, before the OS drops the connection
       let bgPaused = false;
       const appStateSub = AppState.addEventListener('change', async (state) => {
         if ((state === 'background' || state === 'inactive') && !bgPaused) {
@@ -118,41 +118,41 @@ export function useDownload() {
       try {
         result = await resumable.downloadAsync();
       } catch (e: any) {
-        // downloadAsync 抛出：多为后台断连（connection abort）或被 pauseAsync 中断
+        // downloadAsync threw: usually a background disconnect (connection abort) or a pauseAsync interruption
         if (!isBackground() && !bgPaused) {
-          // 真实网络错误，非后台原因
+          // A real network error, not caused by the background
           appStateSub.remove();
           delete lastReportedProgress[key];
-          const msg = e?.message ?? '下载失败';
+          const msg = e?.message ?? 'Download failed';
           updateTask(key, { status: 'error', error: msg.length > 40 ? msg.slice(0, 40) + '...' : msg });
           return 'error';
         }
-        // 后台引发的中断，走下面的续传逻辑
+        // Interrupted by the background; use the resume logic below
         result = null;
       } finally {
         appStateSub.remove();
       }
 
-      // ── 续传逻辑：result 为 null 说明被暂停或中断 ──
+      // ── Resume logic: a null result means it was paused or interrupted ──
       if (!result?.uri) {
-        // 等 App 回到前台
+        // Wait for the app to return to the foreground
         if (isBackground()) await waitForActive();
 
-        // 尝试从断点续传
+        // Try to resume from where it stopped
         try {
           result = await resumable.resumeAsync();
         } catch {
           result = null;
         }
 
-        // 续传仍失败（URL 可能过期），通知上层重试
+        // Resume still failed (the URL may have expired); tell the caller to retry
         if (!result?.uri) {
           delete lastReportedProgress[key];
           return 'retry';
         }
       }
 
-      // ── 下载完成 ──
+      // ── Download complete ──
       delete lastReportedProgress[key];
       const fileSize = await readFileSize(result.uri);
       updateTask(key, {
@@ -164,7 +164,7 @@ export function useDownload() {
     } catch (e: any) {
       delete lastReportedProgress[key];
       console.error('[Download] failed:', e);
-      const msg = e?.message ?? '下载失败';
+      const msg = e?.message ?? 'Download failed';
       updateTask(key, { status: 'error', error: msg.length > 40 ? msg.slice(0, 40) + '...' : msg });
       return 'error';
     }

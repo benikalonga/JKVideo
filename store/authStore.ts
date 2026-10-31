@@ -5,7 +5,7 @@ import { getSecure, setSecure, deleteSecure } from '../utils/secureStorage';
 
 interface AuthState {
   sessdata: string | null;
-  /** B 站 CSRF token（bili_jct cookie 值）。写操作（关注/点赞/投币 etc）必填 */
+  /** Bilibili CSRF token (the bili_jct cookie value). Required for write actions (follow/like/coin etc.) */
   biliJct: string | null;
   uid: string | null;
   username: string | null;

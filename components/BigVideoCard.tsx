@@ -100,7 +100,7 @@ export const BigVideoCard = React.memo(function BigVideoCard({
     let cancelled = false;
     (async () => {
       try {
-        // 命中缓存（5min TTL）直接复用
+        // Cache hit (5 min TTL): reuse directly
         const cached = usePlayUrlCache.getState().get(item.bvid, 16);
         if (cached) {
           if (cancelled) return;

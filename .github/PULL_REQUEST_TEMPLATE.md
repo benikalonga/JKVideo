@@ -1,30 +1,28 @@
-## 改动说明
+## Summary
 
-> 简要描述本次 PR 做了什么
+> Briefly describe what this PR does
 
-## 改动类型
+## Type of change
 
-- [ ] Bug 修复
-- [ ] 新功能
-- [ ] 重构（不改变功能）
-- [ ] 文档更新
-- [ ] 其他：
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactor (no behavior change)
+- [ ] Documentation
+- [ ] Other:
 
-## 关联 Issue
+## Related issue
 
-> 关闭 #（Issue 编号）
+> Closes #(issue number)
 
-## 测试平台
+## Tested on
 
-- [ ] Android（Dev Build）
-- [ ] Android（Expo Go）
+- [ ] Android (Dev Build)
+- [ ] Android (Expo Go)
 - [ ] iOS
 - [ ] Web
 
-## 截图 / 录屏（如适用）
+## Notes
 
-## 注意事项
-
-- [ ] 代码中无硬编码账号信息（SESSDATA、uid 等）
-- [ ] Commit 信息符合 Conventional Commits 规范
-- [ ] 已在本地测试通过
+- [ ] No hard-coded account data in the code (SESSDATA, uid, etc.)
+- [ ] Commit messages follow Conventional Commits
+- [ ] Tested locally

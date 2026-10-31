@@ -5,10 +5,10 @@ import { getSecure } from "../utils/secureStorage";
 import { toast } from "../utils/toast";
 
 /**
- * 关注 / 取消关注 UP 主。
- * - 未登录：toggle 时 toast 提示，按钮 disabled=false 仍允许点击
- * - 已登录但无 bili_jct：toggle 时 toast 提示让用户重登
- * - 正常路径：乐观更新 UI，请求失败回滚
+ * Follow / unfollow a creator.
+ * - Not signed in: toggle shows a toast; the button stays enabled (disabled=false)
+ * - Signed in but no bili_jct: toggle shows a toast asking the user to sign in again
+ * - Normal path: optimistic UI update, rolled back if the request fails
  */
 export function useFollow(mid: number | undefined) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
@@ -16,7 +16,7 @@ export function useFollow(mid: number | undefined) {
   const [loading, setLoading] = useState(false);
   const inflightRef = useRef(false);
 
-  // 首次拉取 / mid 切换时刷新关注状态
+  // Refresh follow state on first load / when mid changes
   useEffect(() => {
     if (!mid || !isLoggedIn) {
       setFollowing(false);
@@ -36,27 +36,27 @@ export function useFollow(mid: number | undefined) {
   const toggle = useCallback(async () => {
     if (!mid) return;
     if (!isLoggedIn) {
-      toast("请先登录后再关注");
+      toast("Please sign in to follow");
       return;
     }
     const biliJct = await getSecure("bili_jct");
     if (!biliJct) {
-      toast("请重新登录后再使用关注功能");
+      toast("Please sign in again to use follow");
       return;
     }
     if (inflightRef.current) return;
     inflightRef.current = true;
     setLoading(true);
     const next = !following;
-    setFollowing(next); // 乐观更新
+    setFollowing(next); // Optimistic update
     try {
       await modifyRelation(mid, next ? 1 : 2);
     } catch (e: any) {
-      setFollowing(!next); // 失败回滚
+      setFollowing(!next); // Roll back on failure
       if (e?.message === "NO_CSRF") {
-        toast("请重新登录后再使用关注功能");
+        toast("Please sign in again to use follow");
       } else {
-        toast(`操作失败：${e?.message || "未知错误"}`);
+        toast(`Action failed: ${e?.message || "Unknown error"}`);
       }
     } finally {
       inflightRef.current = false;

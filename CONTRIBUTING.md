@@ -1,96 +1,96 @@
-# 贡献指南 · Contributing Guide
+# Contributing Guide
 
-感谢你考虑为 JKVideo 做贡献！
+Thanks for considering a contribution to JKVideo!
 
 ---
 
-## 开发环境搭建
+## Development setup
 
-### 推荐方式：Dev Build（完整功能）
+### Recommended: Dev Build (full features)
 
 ```bash
-git clone https://github.com/你的用户名/JKVideo.git
+git clone https://github.com/YOUR_USERNAME/JKVideo.git
 cd JKVideo
 npm install
-npx expo run:android   # 需要连接 Android 设备或启动模拟器
+npx expo run:android   # Requires a connected Android device or a running emulator
 ```
 
-Dev Build 支持 DASH 原生播放（react-native-video），是开发视频播放功能的必选方式。
+Dev Build supports native DASH playback (react-native-video) and is required when working on video playback.
 
-### Expo Go 模式（快速验证 UI）
+### Expo Go (quick UI checks)
 
 ```bash
 npm install
 npx expo start
 ```
 
-适合开发 UI 组件、导航、弹幕列表等不依赖原生视频解码的功能。
+Good for UI components, navigation, the danmaku list and anything else that does not depend on native video decoding.
 
-### Web 端
+### Web
 
 ```bash
 npx expo start --web
 ```
 
-Web 端图片防盗链需要本地代理，在单独终端启动：
+Web needs a local proxy for image hotlink protection. Start it in a separate terminal:
 
 ```bash
-node scripts/proxy.js   # 监听 localhost:3001
+node scripts/proxy.js   # Listens on localhost:3001
 ```
 
 ---
 
-## 提交规范（Conventional Commits）
+## Commit convention (Conventional Commits)
 
-请遵循以下格式：
+Use this format:
 
 ```
-<type>(<scope>): <描述>
+<type>(<scope>): <description>
 
-[可选正文]
+[optional body]
 ```
 
-| type | 含义 |
+| type | Meaning |
 |---|---|
-| `feat` | 新功能 |
-| `fix` | Bug 修复 |
-| `refactor` | 重构（不改变功能） |
-| `docs` | 文档更新 |
-| `chore` | 构建脚本、依赖更新等 |
-| `style` | 代码格式（不影响逻辑） |
-| `perf` | 性能优化 |
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `refactor` | Refactor (no behavior change) |
+| `docs` | Documentation |
+| `chore` | Build scripts, dependency updates, etc. |
+| `style` | Code formatting (no logic change) |
+| `perf` | Performance improvement |
 
-示例：
+Examples:
 
 ```
-feat(danmaku): 添加弹幕字体大小设置
-fix(player): 修复 DASH MPD 解析在 Android 12 上崩溃的问题
-docs: 更新 README 快速开始步骤
+feat(danmaku): add a danmaku font size setting
+fix(player): fix DASH MPD parsing crash on Android 12
+docs: update the README quick start steps
 ```
 
 ---
 
-## PR 提交流程
+## Pull request process
 
-1. Fork 本仓库并创建功能分支：`git checkout -b feat/your-feature`
-2. 在本地完成开发并测试
-3. 提交符合规范的 commit
-4. 发起 Pull Request，填写模板中的说明
-5. 等待 Code Review
-
----
-
-## 注意事项
-
-- **禁止**在代码中硬编码任何账号信息（SESSDATA、uid 等）
-- **不接受**涉及自动化批量操作、绕过 B 站反爬的 PR
-- 新增功能请优先开 Issue 讨论，避免重复劳动
-- 涉及 API 参数变更时，请同步更新 `services/bilibili.ts` 中的注释
+1. Fork the repository and create a feature branch: `git checkout -b feat/your-feature`
+2. Develop and test locally
+3. Commit following the convention
+4. Open a pull request and fill in the template
+5. Wait for code review
 
 ---
 
-## 问题反馈
+## Rules
 
-- Bug 报告：[提交 Issue](https://github.com/你的用户名/JKVideo/issues/new?template=bug_report.yml)
-- 功能建议：[提交 Feature Request](https://github.com/你的用户名/JKVideo/issues/new?template=feature_request.yml)
-- 使用问题：优先在 [Discussions](https://github.com/你的用户名/JKVideo/discussions) 提问
+- **Never** hard-code account data in the code (SESSDATA, uid, etc.)
+- PRs that automate bulk actions or bypass Bilibili's anti-scraping measures are **not accepted**
+- For new features, open an issue to discuss first to avoid duplicate work
+- When changing API parameters, update the comments in `services/bilibili.ts` as well
+
+---
+
+## Feedback
+
+- Bug reports: [open an issue](https://github.com/YOUR_USERNAME/JKVideo/issues/new?template=bug_report.yml)
+- Feature ideas: [open a feature request](https://github.com/YOUR_USERNAME/JKVideo/issues/new?template=feature_request.yml)
+- Questions: ask in [Discussions](https://github.com/YOUR_USERNAME/JKVideo/discussions) first

@@ -1,20 +1,20 @@
 import { useSettingsStore } from '../store/settingsStore';
 
 export type ThemeColors = {
-  bg: string;           // 页面/列表背景
-  card: string;         // 卡片/section 背景
-  text: string;         // 主文字
-  textSub: string;      // 次要文字
-  border: string;       // 分割线
-  inputBg: string;      // 输入框背景
-  sheetBg: string;      // 底部弹出面板背景
-  modalBg: string;      // 弹窗/面板背景
-  modalText: string;    // 弹窗主文字
-  modalTextSub: string; // 弹窗次要文字
-  modalBorder: string;  // 弹窗分割线
-  placeholder: string;  // 占位背景（图片加载中）
-  iconDefault: string;  // 默认图标色
-  danger: string;       // 危险操作色
+  bg: string;           // Page/list background
+  card: string;         // Card/section background
+  text: string;         // Primary text
+  textSub: string;      // Secondary text
+  border: string;       // Divider
+  inputBg: string;      // Input background
+  sheetBg: string;      // Bottom sheet background
+  modalBg: string;      // Modal/panel background
+  modalText: string;    // Modal primary text
+  modalTextSub: string; // Modal secondary text
+  modalBorder: string;  // Modal divider
+  placeholder: string;  // Placeholder background (image loading)
+  iconDefault: string;  // Default icon color
+  danger: string;       // Destructive action color
 };
 
 const light: ThemeColors = {

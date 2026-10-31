@@ -36,7 +36,7 @@ const FAST_DRIP_INTERVAL = 100;
 const QUEUE_FAST_THRESHOLD = 50;
 const SEEK_THRESHOLD = 2;
 
-// ─── Animated.Value 对象池，减少频繁创建/GC ──────────────────────────────────
+// ─── Animated.Value object pool to reduce frequent allocation/GC ─────────────
 const animPool: Animated.Value[] = [];
 const POOL_MAX = 64;
 
@@ -54,11 +54,11 @@ function releaseAnims(items: DisplayedDanmaku[]) {
   }
 }
 
-// ─── 舰长等级 ───────────────────────────────────────────────────────────────────
+// ─── Guard levels ────────────────────────────────────────────────────────────
 const GUARD_LABELS: Record<number, { text: string; color: string }> = {
-  1: { text: "总督", color: "#E13979" },
-  2: { text: "提督", color: "#7B68EE" },
-  3: { text: "舰长", color: "#00D1F1" },
+  1: { text: "Governor", color: "#E13979" },
+  2: { text: "Admiral", color: "#7B68EE" },
+  3: { text: "Captain", color: "#00D1F1" },
 };
 
 function formatTimestamp(seconds: number): string {
@@ -232,7 +232,7 @@ export default function DanmakuList({
     isAtBottomRef.current = true;
   }, []);
 
-  // ─── Live mode render (B站-style chat) ─────────────────────────────────────
+  // ─── Live mode render (Bilibili-style chat) ─────────────────────────────────
   const renderLiveItem = useCallback(
     ({ item }: { item: DisplayedDanmaku }) => {
       const guard = item.guardLevel ? GUARD_LABELS[item.guardLevel] : null;
@@ -257,7 +257,7 @@ export default function DanmakuList({
               <View
                 style={[liveStyles.guardTag, { backgroundColor: "#e53935" }]}
               >
-                <Text style={liveStyles.guardTagText}>房管</Text>
+                <Text style={liveStyles.guardTagText}>Mod</Text>
               </View>
             )}
             {item.medalLevel != null && item.medalName && (
@@ -271,9 +271,9 @@ export default function DanmakuList({
               </View>
             )}
             <Text style={liveStyles.uname} numberOfLines={1}>
-              {item.uname ?? "匿名"}
+              {item.uname ?? "Anonymous"}
             </Text>
-            <Text style={liveStyles.colon}>：</Text>
+            <Text style={liveStyles.colon}>: </Text>
             <Text
               style={[liveStyles.text, { color: theme.text }]}
               numberOfLines={2}
@@ -336,7 +336,7 @@ export default function DanmakuList({
             color="#00AEEC"
           />
           <Text style={styles.headerText}>
-            弹幕 {danmakus.length > 0 ? `(${danmakus.length})` : ""}
+            Danmaku {danmakus.length > 0 ? `(${danmakus.length})` : ""}
           </Text>
           <Ionicons
             name={visible ? "chevron-up" : "chevron-down"}
@@ -366,7 +366,7 @@ export default function DanmakuList({
             removeClippedSubviews={true}
             ListEmptyComponent={
               <Text style={styles.empty}>
-                {danmakus.length === 0 ? "暂无弹幕" : "弹幕将随视频播放显示"}
+                {danmakus.length === 0 ? "No danmaku yet" : "Danmaku will appear as the video plays"}
               </Text>
             }
           />
@@ -376,7 +376,7 @@ export default function DanmakuList({
               onPress={handlePillPress}
               activeOpacity={0.8}
             >
-              <Text style={styles.pillText}>{unseenCount} 条新弹幕</Text>
+              <Text style={styles.pillText}>{unseenCount} new danmaku</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
   },
 });
 
-// ─── Live mode styles (B站-style chat) ────────────────────────────────────────
+// ─── Live mode styles (Bilibili-style chat) ─────────────────────────────────
 const liveStyles = StyleSheet.create({
   list: {
     flex: 1,

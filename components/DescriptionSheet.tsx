@@ -18,7 +18,7 @@ import { useSheetTransition } from "../utils/useSheetTransition";
 interface Props {
   visible: boolean;
   onClose: () => void;
-  /** Sheet 顶部对齐到屏幕的绝对 Y（一般是播放器底部） */
+  /** Absolute screen Y to align the sheet top to (usually the bottom of the player) */
   topOffset: number;
   video: VideoItem | null;
 }
@@ -51,7 +51,7 @@ export function DescriptionSheet({ visible, onClose, topOffset, video }: Props) 
         ]}
       >
         <View style={[styles.header, { borderBottomColor: theme.modalBorder }]}>
-          <Text style={[styles.headerTitle, { color: theme.modalText }]}>简介</Text>
+          <Text style={[styles.headerTitle, { color: theme.modalText }]}>Description</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={8}>
             <Ionicons name="close" size={22} color={theme.modalTextSub} />
           </TouchableOpacity>
@@ -67,25 +67,25 @@ export function DescriptionSheet({ visible, onClose, topOffset, video }: Props) 
 
           {!!video.pubdate && (
             <Text style={[styles.pubdate, { color: theme.modalTextSub }]}>
-              发布于 {formatTime(video.pubdate)}
+              Published {formatTime(video.pubdate)}
             </Text>
           )}
 
           {!!stat && (
             <View style={styles.statGrid}>
-              <StatCell label="播放" value={stat.view} theme={theme} />
-              <StatCell label="弹幕" value={stat.danmaku} theme={theme} />
-              <StatCell label="评论" value={stat.reply} theme={theme} />
-              <StatCell label="点赞" value={stat.like} theme={theme} />
-              <StatCell label="投币" value={stat.coin} theme={theme} />
-              <StatCell label="收藏" value={stat.favorite} theme={theme} />
+              <StatCell label="Views" value={stat.view} theme={theme} />
+              <StatCell label="Danmaku" value={stat.danmaku} theme={theme} />
+              <StatCell label="Comments" value={stat.reply} theme={theme} />
+              <StatCell label="Likes" value={stat.like} theme={theme} />
+              <StatCell label="Coins" value={stat.coin} theme={theme} />
+              <StatCell label="Favorites" value={stat.favorite} theme={theme} />
             </View>
           )}
 
           <View style={[styles.descDivider, { backgroundColor: theme.modalBorder }]} />
 
           <Text style={[styles.descText, { color: theme.modalText }]}>
-            {video.desc?.trim() || "暂无简介"}
+            {video.desc?.trim() || "No description"}
           </Text>
         </ScrollView>
       </Animated.View>

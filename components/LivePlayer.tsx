@@ -43,7 +43,7 @@ export function LivePlayer({
   if (Platform.OS === "web") {
     return (
       <View style={[styles.container, { width: SCREEN_W, height: VIDEO_H }]}>
-        <Text style={styles.webHint}>请在手机端观看直播</Text>
+        <Text style={styles.webHint}>Please watch live streams on your phone</Text>
       </View>
     );
   }
@@ -52,7 +52,7 @@ export function LivePlayer({
     return (
       <View style={[styles.container, { width: SCREEN_W, height: VIDEO_H }]}>
         <Ionicons name="tv-outline" size={40} color="#555" />
-        <Text style={styles.offlineText}>暂未开播</Text>
+        <Text style={styles.offlineText}>Not live right now</Text>
       </View>
     );
   }
@@ -192,7 +192,7 @@ function NativeLivePlayer({
 
       {buffering && (
         <View style={styles.bufferingOverlay} pointerEvents="none">
-          <Text style={styles.bufferingText}>缓冲中...</Text>
+          <Text style={styles.bufferingText}>Buffering...</Text>
         </View>
       )}
 
@@ -244,7 +244,7 @@ function NativeLivePlayer({
                 }}
               >
                 <Text style={styles.qualityText}>
-                  {currentQnDesc || "清晰度"}
+                  {currentQnDesc || "Quality"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -280,7 +280,7 @@ function NativeLivePlayer({
         >
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={[styles.qualityPanel, { backgroundColor: theme.modalBg }]}>
-              <Text style={[styles.qualityPanelTitle, { color: theme.modalText }]}>清晰度</Text>
+              <Text style={[styles.qualityPanelTitle, { color: theme.modalText }]}>Quality</Text>
               {qualities.map((q) => (
                 <TouchableOpacity
                   key={q.qn}

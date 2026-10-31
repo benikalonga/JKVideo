@@ -38,27 +38,27 @@ export function useCheckUpdate() {
       const releaseNotes: string = data.body ?? '';
 
       if (compareVersions(latestVersion, currentVersion) <= 0) {
-        Alert.alert('已是最新版本', `当前版本 v${currentVersion} 已是最新`);
+        Alert.alert('Up to date', `v${currentVersion} is the latest version`);
         return;
       }
 
       Alert.alert(
-        `发现新版本 ${latestVersion}`,
-        releaseNotes || '有新版本可用，是否立即下载？',
+        `New version available: ${latestVersion}`,
+        releaseNotes || 'A new version is available. Download it now?',
         [
-          { text: '取消', style: 'cancel' },
+          { text: 'Cancel', style: 'cancel' },
           {
-            text: '浏览器下载',
+            text: 'Download in browser',
             onPress: () => Linking.openURL(downloadUrl),
           },
           {
-            text: '应用内下载',
+            text: 'Download in app',
             onPress: () => downloadAndInstall(downloadUrl, latestVersion),
           },
         ]
       );
     } catch (e: any) {
-      Alert.alert('检查失败', e?.message ?? '网络错误，请稍后重试');
+      Alert.alert('Update check failed', e?.message ?? 'Network error. Please try again later');
     } finally {
       setIsChecking(false);
     }
@@ -69,7 +69,7 @@ export function useCheckUpdate() {
       'android.settings.MANAGE_UNKNOWN_APP_SOURCES',
       { data: 'package:com.anonymous.jkvideo' }
     ).catch(() => {
-      // 部分旧版 Android 不支持精确跳转，回退到通用安全设置
+      // Some older Android versions do not support the exact intent; fall back to the general security settings
       IntentLauncher.startActivityAsync('android.settings.SECURITY_SETTINGS');
     });
   };
@@ -85,7 +85,7 @@ export function useCheckUpdate() {
 
   const downloadAndInstall = async (url: string, version: string) => {
     if (Platform.OS !== 'android') {
-      Alert.alert('提示', '自动安装仅支持 Android 设备');
+      Alert.alert('Notice', 'Automatic install is only supported on Android');
       return;
     }
     const localUri = FileSystem.cacheDirectory + `JKVideo-${version}.apk`;
@@ -106,18 +106,18 @@ export function useCheckUpdate() {
       await downloadResumable.downloadAsync();
       setDownloadProgress(null);
 
-      // Android 8.0+ 需要用户在系统设置中为本应用开启「安装未知应用」权限。
-      // 系统拒绝时不会抛出 JS 异常，因此下载完成后主动引导。
+      // Android 8.0+ requires the user to grant this app the "Install unknown apps" permission in system settings.
+      // A system denial does not throw a JS error, so guide the user after the download finishes.
       Alert.alert(
-        '下载完成，准备安装',
-        '如果点击「安装」后提示无权限，请先点击「去设置」，为 JKVideo 开启「允许安装未知应用」，然后返回重试。',
+        'Download complete, ready to install',
+        'If tapping "Install" reports a missing permission, tap "Settings" first, allow "Install unknown apps" for JKVideo, then come back and try again.',
         [
-          { text: '去设置', onPress: openInstallSettings },
+          { text: 'Settings', onPress: openInstallSettings },
           {
-            text: '安装',
+            text: 'Install',
             onPress: () => {
               triggerInstall(localUri).catch((e: any) => {
-                Alert.alert('安装失败', e?.message ?? '请在设置中开启「安装未知应用」权限后重试');
+                Alert.alert('Install failed', e?.message ?? 'Allow "Install unknown apps" in settings and try again');
               });
             },
           },
@@ -125,7 +125,7 @@ export function useCheckUpdate() {
       );
     } catch (e: any) {
       setDownloadProgress(null);
-      Alert.alert('下载失败', e?.message ?? '请稍后重试');
+      Alert.alert('Download failed', e?.message ?? 'Please try again later');
     }
   };
 

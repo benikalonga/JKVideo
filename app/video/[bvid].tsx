@@ -38,8 +38,8 @@ export default function VideoDetailScreen() {
     useLiveStore.getState().clearLive();
   }, []);
 
-  // 骨架屏最短展示时长：即便数据秒回，也至少撑够这么久，避免一闪而过。
-  // 重要：依赖 [bvid] —— 切换合集/推荐时同步复位，让骨架屏盖住老数据残影。
+  // Minimum skeleton display time: even if data returns instantly, keep it up this long to avoid a flash.
+  // Important: depends on [bvid], so switching via playlist/recommendations resets it and the skeleton covers stale content.
   const SKELETON_MIN_MS = 600;
   const [minSkeletonElapsed, setMinSkeletonElapsed] = useState(false);
   useEffect(() => {
@@ -62,14 +62,14 @@ export default function VideoDetailScreen() {
   const [currentTime, setCurrentTime] = useState(0);
   const [showDownload, setShowDownload] = useState(false);
   const [showDescSheet, setShowDescSheet] = useState(false);
-  // 评论/弹幕合并 Sheet：null=关闭，否则记录当前应该打开哪个 Tab
+  // Combined comments/danmaku sheet: null = closed, otherwise the tab that should open
   const [engagementTab, setEngagementTab] = useState<EngagementTab | null>(null);
   const [uploaderStat, setUploaderStat] = useState<{
     follower: number;
     archiveCount: number;
   } | null>(null);
 
-  // 切换视频时把和老视频绑定的瞬态状态全部清掉，避免新页面短暂显示老弹幕/老 UP 主统计/老开着的 Sheet
+  // When switching videos, clear all transient state tied to the old video so the new page never briefly shows old danmaku, old creator stats or an open sheet
   useEffect(() => {
     setDanmakus([]);
     setUploaderStat(null);
@@ -83,7 +83,7 @@ export default function VideoDetailScreen() {
     video?.owner.mid,
   );
 
-  // Sheet 顶部对齐播放器底部：safe-area 顶 inset + 播放器高度（无 TopBar，返回按钮悬浮在播放器上）
+  // Align the sheet top to the bottom of the player: safe-area top inset + player height (no TopBar; the back button floats over the player)
   const insets = useSafeAreaInsets();
   const { width: SCREEN_W } = useWindowDimensions();
   const sheetTopOffset = insets.top + SCREEN_W * 0.5625;
@@ -94,8 +94,8 @@ export default function VideoDetailScreen() {
     load: loadRelated,
   } = useRelatedVideos(bvid as string);
 
-  // 推荐视频不参与首屏，等导航动画结束再拉，避免与详情/播放流抢 JS 线程
-  // 依赖 [bvid]：合集/推荐切到新视频时同步重新拉新推荐列表
+  // Recommendations are not part of the first screen; fetch after the navigation animation so they do not compete with details/playback for the JS thread
+  // Depends on [bvid]: refetch recommendations when switching to a new video via playlist/recommendations
   useEffect(() => {
     const handle = InteractionManager.runAfterInteractions(() => {
       loadRelated();
@@ -141,7 +141,7 @@ export default function VideoDetailScreen() {
         <VideoDetailSkeleton />
       ) : (
         <FlatList<VideoItem>
-          // bvid 是 key —— 切换视频时 FlatList 整体重挂，滚动位置回到顶，避免老内容残影
+          // bvid is the key, so the FlatList remounts when switching videos and scroll returns to the top, avoiding stale content
           key={bvid}
           style={styles.scroll}
           data={relatedVideos}
@@ -149,7 +149,7 @@ export default function VideoDetailScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <>
-              {/* 标题 + Meta 行（点击展开简介 Sheet） */}
+              {/* Title + meta row (tap to open the description sheet) */}
               <View style={styles.titleBlock}>
                 <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
                   {video.title}
@@ -163,17 +163,17 @@ export default function VideoDetailScreen() {
                     style={[styles.metaText, { color: theme.textSub }]}
                     numberOfLines={1}
                   >
-                    {formatCount(video.stat?.view ?? 0)} 次观看
+                    {formatCount(video.stat?.view ?? 0)} views
                     {video.pubdate ? ` · ${formatTime(video.pubdate)}` : ""}
-                    {video.stat?.like ? ` · ${formatCount(video.stat.like)} 点赞` : ""}
+                    {video.stat?.like ? ` · ${formatCount(video.stat.like)} likes` : ""}
                     {video.tname ? ` · ${video.tname}` : ""}
                   </Text>
-                  <Text style={[styles.metaMore, { color: theme.textSub }]}>更多</Text>
+                  <Text style={[styles.metaMore, { color: theme.textSub }]}>More</Text>
                   <Ionicons name="chevron-forward" size={14} color={theme.textSub} />
                 </TouchableOpacity>
               </View>
 
-              {/* 动作按钮行 */}
+              {/* Action button row */}
               <View style={[styles.actionWrap, { borderTopColor: theme.border }]}>
                 <VideoActionRow
                   stat={video.stat ?? undefined}
@@ -186,7 +186,7 @@ export default function VideoDetailScreen() {
                 />
               </View>
 
-              {/* UP 主行 + 关注按钮 */}
+              {/* Creator row + follow button */}
               <View
                 style={[
                   styles.creatorRow,
@@ -216,8 +216,8 @@ export default function VideoDetailScreen() {
                         style={[styles.creatorStat, { color: theme.textSub }]}
                         numberOfLines={1}
                       >
-                        {formatCount(uploaderStat.follower)}粉丝 ·{" "}
-                        {formatCount(uploaderStat.archiveCount)}视频
+                        {formatCount(uploaderStat.follower)} followers ·{" "}
+                        {formatCount(uploaderStat.archiveCount)} videos
                       </Text>
                     )}
                   </View>
@@ -234,12 +234,12 @@ export default function VideoDetailScreen() {
                       following && { color: theme.textSub },
                     ]}
                   >
-                    {following ? "已关注" : "关注"}
+                    {following ? "Following" : "Follow"}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* 合集 */}
+              {/* Playlist */}
               {video.ugc_season && (
                 <SeasonSection
                   season={video.ugc_season}
@@ -248,10 +248,10 @@ export default function VideoDetailScreen() {
                 />
               )}
 
-              {/* 推荐视频小标题 */}
+              {/* Recommended videos heading */}
               <View style={[styles.relatedHeader, { backgroundColor: theme.card }]}>
                 <Text style={[styles.relatedHeaderText, { color: theme.text }]}>
-                  推荐视频
+                  Recommended videos
                 </Text>
               </View>
             </>
@@ -300,7 +300,7 @@ export default function VideoDetailScreen() {
                     {item.owner?.name ?? ""}
                   </Text>
                   <Text style={[styles.relatedView, { color: theme.textSub }]}>
-                    {formatCount(item.stat?.view ?? 0)} 播放
+                    {formatCount(item.stat?.view ?? 0)} views
                   </Text>
                 </View>
               </View>
@@ -363,10 +363,10 @@ function SeasonSection({
   const episodes = season.sections?.[0]?.episodes ?? [];
   const currentIndex = episodes.findIndex((ep) => ep.bvid === currentBvid);
   const listRef = useRef<FlatList>(null);
-  // 初次渲染先隐身，scrollToOffset 完成后再显示，彻底消除"先 0 再跳"的可见闪烁
+  // Stay hidden on first render and show after scrollToOffset completes, removing the visible jump from 0
   const [ready, setReady] = useState(currentIndex <= 0);
 
-  // 计算让当前集水平居中的初始 contentOffset
+  // Compute the initial contentOffset that centers the current episode horizontally
   const initialOffset = useMemo(() => {
     if (currentIndex <= 0) return 0;
     const ITEM_WIDTH = 120;
@@ -387,8 +387,8 @@ function SeasonSection({
   return (
     <View style={[styles.seasonBox, { borderTopColor: theme.border, backgroundColor: theme.card }]}>
       <View style={styles.seasonHeader}>
-        <Text style={[styles.seasonTitle, { color: theme.text }]}>合集 · {season.title}</Text>
-        <Text style={styles.seasonCount}>{season.ep_count}个视频</Text>
+        <Text style={[styles.seasonTitle, { color: theme.text }]}>Playlist · {season.title}</Text>
+        <Text style={styles.seasonCount}>{season.ep_count} videos</Text>
         <Ionicons name="chevron-forward" size={14} color="#999" />
       </View>
       <FlatList
@@ -423,7 +423,7 @@ function SeasonSection({
                   recyclingKey={ep.bvid}
                 />
               )}
-              <Text style={[styles.epNum, isCurrent && styles.epNumActive]}>第{index + 1}集</Text>
+              <Text style={[styles.epNum, isCurrent && styles.epNumActive]}>Ep. {index + 1}</Text>
               <Text style={[styles.epTitle, { color: theme.text }]} numberOfLines={2}>{ep.title}</Text>
             </TouchableOpacity>
           );
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   loader: { marginVertical: 30 },
   scroll: { flex: 1 },
 
-  // Title + Meta（YT 风格）
+  // Title + meta (YouTube style)
   titleBlock: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
   title: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
   metaRow: {
@@ -449,10 +449,10 @@ const styles = StyleSheet.create({
   metaText: { flex: 1, fontSize: 12, lineHeight: 18 },
   metaMore: { fontSize: 12, lineHeight: 18, marginLeft: 6, marginRight: 2 },
 
-  // Action row 外壳
+  // Action row wrapper
   actionWrap: { borderTopWidth: StyleSheet.hairlineWidth },
 
-  // UP 主行
+  // Creator row
   creatorRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -473,11 +473,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginLeft: 12,
   },
-  // 已关注：浅灰底 + 灰字（textSub 由 useTheme 提供）
+  // Following: light gray background + gray text (textSub comes from useTheme)
   subBtnFollowing: { backgroundColor: "rgba(127,127,127,0.18)" },
   subBtnTxt: { color: "#fff", fontSize: 13, fontWeight: "600" },
 
-  // 合集
+  // Playlist
   seasonBox: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 10 },
   seasonHeader: {
     flexDirection: "row",
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   epNumActive: { color: "#00AEEC", fontWeight: "600" },
   epTitle: { fontSize: 12, paddingHorizontal: 6, paddingBottom: 6, lineHeight: 16 },
 
-  // 推荐列表
+  // Recommendations list
   relatedHeader: { paddingLeft: 13, paddingBottom: 8, paddingTop: 12 },
   relatedHeaderText: { fontSize: 13, fontWeight: "600" as const },
   relatedCard: {

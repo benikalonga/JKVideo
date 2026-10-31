@@ -8,7 +8,7 @@ interface CacheEntry {
 }
 
 interface PlayUrlCacheStore {
-  // 不通过 set 触发渲染（只是用 store 持有 Map）
+  // Does not trigger renders through set (the store only holds a Map)
   cache: Map<string, CacheEntry>;
   get: (bvid: string, qn: number) => CacheEntry | undefined;
   set: (bvid: string, qn: number, entry: Omit<CacheEntry, 'ts'>) => void;
@@ -34,7 +34,7 @@ export const usePlayUrlCache = create<PlayUrlCacheStore>((_set, getState) => ({
   set: (bvid, qn, entry) => {
     const map = getState().cache;
     map.set(makeKey(bvid, qn), { ...entry, ts: Date.now() });
-    // 简单 LRU：超过容量删最早
+    // Simple LRU: drop the oldest when over capacity
     if (map.size > MAX_ENTRIES) {
       const oldestKey = map.keys().next().value;
       if (oldestKey) map.delete(oldestKey);

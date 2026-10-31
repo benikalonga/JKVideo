@@ -1,9 +1,9 @@
 /**
- * MiniPlayer ↔ LiveMiniPlayer 互斥协调。
- * 通过 zustand subscribe 在外部串联两个 store，避免它们直接互相 import
- * 造成循环依赖（曾导致 Metro / TS 编译时内存暴涨）。
+ * Mutual exclusion between MiniPlayer and LiveMiniPlayer.
+ * Links the two stores externally via zustand subscribe so they never import each other directly,
+ * which caused a circular dependency (and once made Metro / TS compile memory explode).
  *
- * 仅需在 app 启动时 import 一次（_layout.tsx）即可生效。
+ * Import it once at app startup (_layout.tsx) for it to take effect.
  */
 import { useVideoStore } from './videoStore';
 import { useLiveStore } from './liveStore';
@@ -14,14 +14,14 @@ export function initMiniExclusion() {
   if (initialized) return;
   initialized = true;
 
-  // 视频 mini 激活 → 清掉直播 mini
+  // Video mini player activated → clear the live mini player
   useVideoStore.subscribe((state, prev) => {
     if (state.isActive && !prev.isActive && useLiveStore.getState().isActive) {
       useLiveStore.getState().clearLive();
     }
   });
 
-  // 直播 mini 激活 → 清掉视频 mini
+  // Live mini player activated → clear the video mini player
   useLiveStore.subscribe((state, prev) => {
     if (state.isActive && !prev.isActive && useVideoStore.getState().isActive) {
       useVideoStore.getState().clearVideo();

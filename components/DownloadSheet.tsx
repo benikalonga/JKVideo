@@ -17,7 +17,7 @@ import { useSheetTransition } from "../utils/useSheetTransition";
 interface Props {
   visible: boolean;
   onClose: () => void;
-  /** Sheet 顶部对齐到屏幕的绝对 Y（一般是播放器底部） */
+  /** Absolute screen Y to align the sheet top to (usually the bottom of the player) */
   topOffset: number;
   bvid: string;
   cid: number;
@@ -63,7 +63,7 @@ export function DownloadSheet({
         ]}
       >
         <View style={[styles.header, { borderBottomColor: theme.modalBorder }]}>
-          <Text style={[styles.headerTitle, { color: theme.modalText }]}>下载视频</Text>
+          <Text style={[styles.headerTitle, { color: theme.modalText }]}>Download video</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={8}>
             <Ionicons name="close" size={22} color={theme.modalTextSub} />
           </TouchableOpacity>
@@ -91,7 +91,7 @@ export function DownloadSheet({
                         startDownload(bvid, cid, q.qn, q.desc, title, cover)
                       }
                     >
-                      <Text style={styles.downloadBtnTxt}>下载</Text>
+                      <Text style={styles.downloadBtnTxt}>Download</Text>
                     </TouchableOpacity>
                   )}
                   {task?.status === "downloading" && (
@@ -114,7 +114,7 @@ export function DownloadSheet({
                   {task?.status === "done" && (
                     <View style={styles.doneRow}>
                       <Ionicons name="checkmark-circle" size={16} color="#00AEEC" />
-                      <Text style={styles.doneTxt}>已下载</Text>
+                      <Text style={styles.doneTxt}>Downloaded</Text>
                     </View>
                   )}
                   {task?.status === "error" && (
@@ -131,7 +131,7 @@ export function DownloadSheet({
                         }
                       >
                         <Ionicons name="refresh" size={14} color="#f44" />
-                        <Text style={styles.retryTxt}>重试</Text>
+                        <Text style={styles.retryTxt}>Retry</Text>
                       </TouchableOpacity>
                     </View>
                   )}

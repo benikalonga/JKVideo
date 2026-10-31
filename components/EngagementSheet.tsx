@@ -25,7 +25,7 @@ export type EngagementTab = "comments" | "danmaku";
 interface Props {
   visible: boolean;
   onClose: () => void;
-  /** Sheet 顶部对齐到屏幕的绝对 Y（一般是播放器底部） */
+  /** Absolute screen Y to align the sheet top to (usually the bottom of the player) */
   topOffset: number;
   initialTab: EngagementTab;
   aid: number;
@@ -53,12 +53,12 @@ export function EngagementSheet({
   const [commentSort, setCommentSort] = useState<0 | 2>(2);
   const { comments, loading, hasMore, load } = useComments(aid, commentSort);
 
-  // 每次打开根据外部 initialTab 切到对应 Tab
+  // Each time it opens, switch to the tab given by the external initialTab
   useEffect(() => {
     if (visible) setTab(initialTab);
   }, [visible, initialTab]);
 
-  // 评论懒加载：仅当 Sheet 可见且选中评论 Tab 时拉
+  // Lazy-load comments: only fetch when the sheet is visible and the comments tab is selected
   useEffect(() => {
     if (!visible || !aid || tab !== "comments") return;
     const handle = InteractionManager.runAfterInteractions(() => load());
@@ -85,13 +85,13 @@ export function EngagementSheet({
           },
         ]}
       >
-        {/* Tab 栏 + 关闭按钮 */}
+        {/* Tab bar + close button */}
         <View style={[styles.tabBar, { borderBottomColor: theme.modalBorder }]}>
           {(["comments", "danmaku"] as EngagementTab[]).map((t) => {
             const label =
               t === "comments"
-                ? `评论${replyCount ? ` ${formatCount(replyCount)}` : ""}`
-                : `弹幕${danmakus.length ? ` ${formatCount(danmakus.length)}` : ""}`;
+                ? `Comments${replyCount ? ` ${formatCount(replyCount)}` : ""}`
+                : `Danmaku${danmakus.length ? ` ${formatCount(danmakus.length)}` : ""}`;
             const active = tab === t;
             return (
               <TouchableOpacity
@@ -119,7 +119,7 @@ export function EngagementSheet({
           </TouchableOpacity>
         </View>
 
-        {/* 评论 Tab */}
+        {/* Comments tab */}
         {tab === "comments" && (
           <>
             <View style={[styles.sortRow, { borderBottomColor: theme.modalBorder }]}>
@@ -140,7 +140,7 @@ export function EngagementSheet({
                       commentSort === sort && styles.sortBtnTxtActive,
                     ]}
                   >
-                    {sort === 2 ? "热门" : "最新"}
+                    {sort === 2 ? "Top" : "Newest"}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -160,14 +160,14 @@ export function EngagementSheet({
                   <ActivityIndicator style={styles.loader} color="#00AEEC" />
                 ) : !hasMore && comments.length > 0 ? (
                   <Text style={[styles.emptyTxt, { color: theme.modalTextSub }]}>
-                    已加载全部评论
+                    All comments loaded
                   </Text>
                 ) : null
               }
               ListEmptyComponent={
                 !loading ? (
                   <Text style={[styles.emptyTxt, { color: theme.modalTextSub }]}>
-                    暂无评论
+                    No comments yet
                   </Text>
                 ) : null
               }
@@ -175,7 +175,7 @@ export function EngagementSheet({
           </>
         )}
 
-        {/* 弹幕 Tab —— hideHeader=true 让弹幕列表填满，header 由本 Sheet 顶部 Tab 提供 */}
+        {/* Danmaku tab: hideHeader=true lets the list fill the space; this sheet's top tabs act as the header */}
         {tab === "danmaku" && (
           <DanmakuList
             danmakus={danmakus}

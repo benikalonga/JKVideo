@@ -130,16 +130,16 @@ export default function CreatorScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={[styles.statNum, { color: theme.text }]}>{formatCount(info.follower)}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSub }]}>粉丝</Text>
+              <Text style={[styles.statLabel, { color: theme.textSub }]}>Followers</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             <View style={styles.statItem}>
               <Text style={[styles.statNum, { color: theme.text }]}>{formatCount(info.archiveCount)}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSub }]}>视频</Text>
+              <Text style={[styles.statLabel, { color: theme.textSub }]}>Videos</Text>
             </View>
           </View>
           <Text style={[styles.videoListHeader, { color: theme.textSub }]}>
-            全部视频（{total}）
+            All videos ({total})
           </Text>
         </View>
       ) : null}
@@ -208,7 +208,7 @@ export default function CreatorScreen() {
         )}
         ListEmptyComponent={
           !loading && !infoLoading ? (
-            <Text style={[styles.emptyTxt, { color: theme.textSub }]}>暂无视频</Text>
+            <Text style={[styles.emptyTxt, { color: theme.textSub }]}>No videos yet</Text>
           ) : null
         }
         ListFooterComponent={
@@ -218,7 +218,7 @@ export default function CreatorScreen() {
         }
       />
 
-      {/* 浮动 topBar：背景透明 → 不透明，跟随滚动 */}
+      {/* Floating topBar: background goes from transparent to opaque as you scroll */}
       <View
         style={[styles.topBarFloat, { height: TOPBAR_HEIGHT, top: insets.top }]}
         pointerEvents="box-none"
@@ -245,7 +245,7 @@ export default function CreatorScreen() {
             style={[styles.topTitle, { color: theme.text, opacity: topBarOpacity }]}
             numberOfLines={1}
           >
-            {info?.name ?? 'UP主主页'}
+            {info?.name ?? 'Creator page'}
           </Animated.Text>
           <View style={styles.backBtn} />
         </View>

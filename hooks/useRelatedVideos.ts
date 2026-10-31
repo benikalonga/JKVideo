@@ -7,7 +7,7 @@ export function useRelatedVideos(bvid: string) {
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
 
-  // 切到不同 bvid 时立刻清空，避免新页面短暂显示上一支视频的推荐流
+  // Clear immediately when switching bvid so the new page never briefly shows the previous video's recommendations
   useEffect(() => {
     setVideos([]);
   }, [bvid]);

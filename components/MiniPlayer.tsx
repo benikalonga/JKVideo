@@ -34,7 +34,7 @@ export function MiniPlayer() {
     >
       <Image source={{ uri: proxyImageUrl(cover) }} style={styles.cover} />
       <Text style={styles.title} numberOfLines={1}>{title}</Text>
-      {/* 关闭按钮仅作视觉展示，点击逻辑由 hitClose 坐标判断处理 */}
+      {/* Close button is visual only; taps are handled by hitClose coordinates */}
       <View style={styles.closeBtn}>
         <Ionicons name="close" size={14} color="#fff" />
       </View>

@@ -37,7 +37,7 @@ export function useVideoDetail(bvid: string) {
   }
 
   useEffect(() => {
-    // bvid 切换时立刻清空旧数据，防止上一支视频的播放器/简介/清晰度短暂"残影"造成抖动
+    // Clear old data immediately when bvid changes, so the previous video's player/description/quality never ghost on screen
     setVideo(null);
     setPlayData(null);
     setQualities([]);
@@ -46,7 +46,7 @@ export function useVideoDetail(bvid: string) {
     async function fetchData() {
       try {
         setLoading(true);
-        // 读取续播位置
+        // Read the resume position
         setInitialTime(usePlayProgressStore.getState().get(bvid));
         const detail = await getVideoDetail(bvid);
         setVideo(detail);
@@ -62,8 +62,8 @@ export function useVideoDetail(bvid: string) {
     if (bvid) fetchData();
   }, [bvid]);
 
-  // 登录状态变化时重新拉取清晰度列表（登录后可能获得更高画质）
-  // cancelled flag 防止旧响应（切换登录态后）覆盖新响应
+  // Refetch the quality list when sign-in state changes (signing in may unlock higher quality)
+  // The cancelled flag stops an old response (from before the sign-in change) overwriting the new one
   useEffect(() => {
     if (!cidRef.current) return;
     let cancelled = false;

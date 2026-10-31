@@ -2,16 +2,16 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'play_progress';
-// 持久化最多 200 条记录
+// Persist at most 200 records
 const MAX_ENTRIES = 200;
-// 视频接近结尾（>= 95%）视为看完，清掉记录
+// Treat a video as finished near the end (>= 95%) and clear its record
 const FINISH_RATIO = 0.95;
 
 interface ProgressEntry {
   bvid: string;
-  time: number;       // 秒
-  duration: number;   // 秒
-  ts: number;         // 写入时间戳
+  time: number;       // Seconds
+  duration: number;   // Seconds
+  ts: number;         // Write timestamp
 }
 
 interface PlayProgressStore {
@@ -19,12 +19,12 @@ interface PlayProgressStore {
   hydrated: boolean;
   hydrate: () => Promise<void>;
   save: (bvid: string, time: number, duration: number) => void;
-  get: (bvid: string) => number; // 返回应跳转的秒数（无记录返回 0）
+  get: (bvid: string) => number; // Seconds to seek to (0 if there is no record)
   clear: (bvid: string) => void;
 }
 
 const persist = (records: Record<string, ProgressEntry>) => {
-  // 控制总量：超量删最早
+  // Cap the total: drop the oldest when over the limit
   const entries = Object.values(records).sort((a, b) => b.ts - a.ts);
   const trimmed = entries.slice(0, MAX_ENTRIES);
   const trimmedMap: Record<string, ProgressEntry> = {};
@@ -49,12 +49,12 @@ export const usePlayProgressStore = create<PlayProgressStore>((set, get) => ({
   },
   save: (bvid, time, duration) => {
     if (!bvid || !duration || duration <= 0) return;
-    // 视频接近结尾，清掉记录
+    // Near the end of the video, clear the record
     if (time / duration >= FINISH_RATIO) {
       get().clear(bvid);
       return;
     }
-    // 起始 5 秒不必记录
+    // No need to record the first 5 seconds
     if (time < 5) return;
     const records = { ...get().records };
     records[bvid] = { bvid, time, duration, ts: Date.now() };

@@ -36,9 +36,9 @@ import { useTheme } from "../utils/theme";
 import { usePlayProgressStore } from "../store/playProgressStore";
 
 const BAR_H = 3;
-// 进度球尺寸
+// Progress thumb size
 const BALL = 12;
-// 活跃状态下的拖动球增大尺寸，提升触控体验
+// Larger thumb while dragging for easier touch control
 const BALL_ACTIVE = 16;
 const HIDE_DELAY = 3000;
 
@@ -64,7 +64,7 @@ function findFrameByTime(index: number[], seekTime: number): number {
 }
 
 export interface NativeVideoPlayerRef extends IVideoPlayer {
-  /** @deprecated 用 pause()/resume() 代替 */
+  /** @deprecated Use pause()/resume() instead */
   setPaused: (v: boolean) => void;
 }
 
@@ -82,11 +82,11 @@ interface Props {
   onTimeUpdate?: (t: number) => void;
   initialTime?: number;
   forcePaused?: boolean;
-  /** 点击播放器右上角"弹幕列表"图标，由外层打开 Sheet。仅在小窗口生效。 */
+  /** Tapping the "danmaku list" icon in the top right opens the sheet from the parent. Small player only. */
   onDanmakuListPress?: () => void;
-  /** 点击播放器左上角返回箭头，跟随播放器控制栏一起显隐。仅在小窗口生效。 */
+  /** Tapping the back arrow in the top left; shown and hidden with the player controls. Small player only. */
   onBack?: () => void;
-  /** 视频封面 URL：作为 poster 覆盖在 <Video> 上，首帧出来前用来盖住黑屏 */
+  /** Video cover URL: shown as a poster over <Video> to hide the black screen before the first frame */
   coverUrl?: string;
 }
 
@@ -118,8 +118,8 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
     const [resolvedUrl, setResolvedUrl] = useState<string | undefined>();
     const isDash = !!playData?.dash;
-    // 封面挡片：用于盖住 <Video> 从挂载到 onLoad 出首帧之间的黑屏
-    // resolvedUrl 变化（新视频 / 换清晰度）时重新置 true，等下一次 onLoad 再撤
+    // Cover overlay: hides the black screen between <Video> mounting and the first frame in onLoad
+    // Reset to true when resolvedUrl changes (new video / quality change) and cleared on the next onLoad
     const [coverVisible, setCoverVisible] = useState(true);
     useEffect(() => {
       setCoverVisible(true);
@@ -129,8 +129,8 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [paused, setPaused] = useState(false);
-    // seek 后强制触发 react-native-video 重新评估 paused prop 的 hack 用的瞬时叠加态
-    // 单独存储以避免污染 paused（用于图标显示）：seek 完成的一瞬间不让"播放/暂停"图标闪
+    // Transient overlay state for the hack that forces react-native-video to re-evaluate the paused prop after a seek
+    // Stored separately so it does not pollute paused (used for the icon): the play/pause icon does not flash when a seek finishes
     const [seekHackPaused, setSeekHackPaused] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const currentTimeRef = useRef(0);
@@ -140,22 +140,22 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
     const [showQuality, setShowQuality] = useState(false);
 
-    // 倍速
+    // Playback speed
     const RATE_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
     const [rate, setRate] = useState(1);
     const [showRate, setShowRate] = useState(false);
 
-    // 清晰度切换：保留进度 + loading 遮罩
+    // Quality switch: keep position + loading overlay
     const [switching, setSwitching] = useState(false);
     const pendingSeekRef = useRef<number | null>(null);
     const prevQnRef = useRef(currentQn);
     const switchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // 续播：每 5s 持久化一次
+    // Resume playback: persist every 5s
     const lastSaveRef = useRef(0);
 
     useEffect(() => {
-      // 排除初始挂载（prevQn 或 currentQn === 0）
+      // Skip the initial mount (prevQn or currentQn === 0)
       if (
         prevQnRef.current !== 0 &&
         currentQn !== 0 &&
@@ -163,7 +163,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       ) {
         pendingSeekRef.current = currentTimeRef.current;
         setSwitching(true);
-        // 兜底：8s 内 onLoad 没触发就强制收起遮罩
+        // Fallback: force-hide the overlay if onLoad has not fired within 8s
         if (switchTimeoutRef.current) clearTimeout(switchTimeoutRef.current);
         switchTimeoutRef.current = setTimeout(() => setSwitching(false), 8000);
       }
@@ -179,10 +179,10 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
     const [buffered, setBuffered] = useState(0);
     const [isSeeking, setIsSeeking] = useState(false);
     const isSeekingRef = useRef(false);
-    // 拖动球位置用 Animated.Value 驱动：setValue 不触发 React 重渲染，
-    // 原生层直接更新坐标，跟手 60fps。消除老方案 setState+60ms 节流导致的"段落感"。
+    // The thumb position is driven by an Animated.Value: setValue does not trigger a React re-render,
+    // the native layer updates coordinates directly at 60fps. Removes the stepping of the old setState + 60ms throttle approach.
     const touchAnimX = useRef(new Animated.Value(0)).current;
-    // 缩略图换帧仍走 state（精灵图位移涉及 RN 视图属性变化），50ms 节流足够
+    // Thumbnail frame changes still go through state (sprite offset changes RN view props); a 50ms throttle is enough
     const [thumbFrame, setThumbFrame] = useState<{
       sheetIdx: number;
       col: number;
@@ -193,7 +193,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
     const barOffsetX = useRef(0);
     const barWidthRef = useRef(300);
     const trackRef = useRef<View>(null);
-    // 让稳定的 PanResponder 闭包能读到最新 shots
+    // Let the stable PanResponder closure read the latest shots
     const shotsRef = useRef<VideoShotData | null>(null);
 
     const [shots, setShots] = useState<VideoShotData | null>(null);
@@ -217,7 +217,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       qualities.find((q) => q.qn === currentQn)?.desc ??
       String(currentQn || "HD");
 
-    // 解析播放链接，dash 需要构建 mpd uri，普通链接直接取第一个 durl。使用 useEffect 监听 playData 和 currentQn 变化，确保每次切换视频或清晰度时都能正确更新播放链接。错误处理逻辑保证即使 dash mpd 构建失败也能回退到普通链接，提升兼容性。
+    // Resolve the playback URL: DASH needs an MPD URI, plain links use the first durl. Runs on playData and currentQn changes so switching video or quality always updates the URL. If building the DASH MPD fails, fall back to the plain link for compatibility.
     useEffect(() => {
       if (!playData) {
         setResolvedUrl(undefined);
@@ -231,7 +231,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         setResolvedUrl(playData.durl?.[0]?.url);
       }
     }, [playData, currentQn]);
-    // 获取视频截图数据，供进度条预览使用。依赖 bvid 和 cid，确保在视频切换时重新获取截图。使用 cancelled 标志避免在组件卸载后更新状态，防止内存泄漏和潜在的错误。
+    // Fetch video snapshot data for the progress bar preview. Depends on bvid and cid so it refetches when the video changes. The cancelled flag avoids state updates after unmount.
     useEffect(() => {
       if (!bvid || !cid) return;
       let cancelled = false;
@@ -254,7 +254,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       shotsRef.current = shots;
     }, [shots]);
 
-    // 非拖动时，球/进度填充随 currentTime 同步（onProgress 驱动）
+    // When not dragging, the thumb/progress fill follow currentTime (driven by onProgress)
     useEffect(() => {
       if (isSeekingRef.current) return;
       if (durationRef.current <= 0 || barWidthRef.current <= 0) {
@@ -269,7 +269,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       touchAnimX.setValue(x);
     }, [currentTime, duration]);
 
-    // 控制栏自动隐藏逻辑：每次用户交互后重置计时器，3秒无交互则隐藏。使用 useRef 存储计时器 ID 和拖动状态，避免闭包问题导致的计时器失效或误触发。
+    // Auto-hide controls: reset the timer after each interaction and hide after 3s of inactivity. Timer ID and drag state live in refs to avoid stale-closure bugs.
     const resetHideTimer = useCallback(() => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       if (!isSeekingRef.current) {
@@ -279,13 +279,13 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         );
       }
     }, []);
-    // 显示控制栏并重置隐藏计时器，确保用户每次交互后都有足够时间查看控制栏。依赖 resetHideTimer 保持稳定引用，避免不必要的重新渲染。
+    // Show the controls and reset the hide timer so the user has enough time after each interaction. resetHideTimer keeps a stable reference to avoid extra renders.
     const showAndReset = useCallback(() => {
       setShowControls(true);
       resetHideTimer();
     }, [resetHideTimer]);
 
-    // 点击视频区域切换控制栏显示状态，显示时重置隐藏计时器，隐藏时直接隐藏。使用 useCallback 优化性能，避免不必要的函数重新创建。
+    // Tapping the video toggles the controls: when showing, reset the hide timer; otherwise hide immediately. Wrapped in useCallback to avoid recreating the function.
     const handleTap = useCallback(() => {
       setShowControls((prev) => {
         if (!prev) {
@@ -297,7 +297,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       });
     }, [resetHideTimer]);
 
-    // 组件卸载时清理隐藏计时器，避免内存泄漏和潜在的状态更新错误。依赖项为空数组确保只在挂载和卸载时执行一次。
+    // Clear the hide timer on unmount to avoid leaks and late state updates. Empty deps so it runs only on mount/unmount.
     useEffect(() => {
       resetHideTimer();
       return () => {
@@ -313,7 +313,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         }
       });
     }, []);
-    // 拖动中按 50ms 节流计算精灵图帧索引；球位置不走这里，由 Animated.setValue 直接更新
+    // While dragging, compute the sprite frame index with a 50ms throttle; the thumb position is updated directly by Animated.setValue
     const updateThumbFrame = useCallback((x: number) => {
       const shotsData = shotsRef.current;
       if (!shotsData || durationRef.current <= 0 || barWidthRef.current <= 0) return;
@@ -334,8 +334,8 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
       });
     }, []);
 
-    // PanResponder 进度条拖动：球/进度填充走 Animated.setValue（无 React 渲染），
-    // 缩略图换帧 50ms 节流；松手时 seek 到目标时间并恢复自动同步。
+    // PanResponder progress drag: the thumb/progress fill use Animated.setValue (no React render),
+    // thumbnail frames are throttled to 50ms; on release, seek to the target time and resume automatic sync.
     const panResponder = useRef(
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
@@ -356,7 +356,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             0,
             barWidthRef.current,
           );
-          // 关键：setValue 不触发 React 渲染，进度球/进度填充由原生层直接刷新
+          // Key point: setValue does not trigger a React render; the native layer refreshes the thumb/progress fill directly
           touchAnimX.setValue(x);
           const now = Date.now();
           if (now - thumbThrottleRef.current >= 50) {
@@ -364,7 +364,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             updateThumbFrame(x);
           }
         },
-        // 用户松开拖动，或拖动被中断（如来电），都视为结束拖动
+        // The user released the drag, or the drag was interrupted (e.g. an incoming call); either way the drag ends
         onPanResponderRelease: (_, gs) => {
           const x = clamp(
             gs.moveX - barOffsetX.current,
@@ -394,10 +394,10 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
     ).current;
     const bufferedRatio = duration > 0 ? clamp(buffered / duration, 0, 1) : 0;
 
-    // 缩略图尺寸：竖屏播放器较窄给 160，全屏给 220 提升可读性
+    // Thumbnail size: 160 for the narrower portrait player, 220 in fullscreen for readability
     const THUMB_DISPLAY_W = isFullscreen ? 220 : 160;
 
-    // 进度球水平偏移：active 态球更大，translate 偏移需对齐圆心
+    // Thumb horizontal offset: the active thumb is larger, so the translate offset must align its center
     const ballTranslate = React.useMemo(
       () => Animated.subtract(touchAnimX, (isSeeking ? BALL_ACTIVE : BALL) / 2),
       [isSeeking, touchAnimX],
@@ -413,15 +413,15 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         image,
       } = shots;
       const { sheetIdx, col, row, seekTime } = thumbFrame;
-      // 根据单帧图尺寸和预设的显示宽度计算缩放后的显示尺寸，保持宽高比
+      // Compute the scaled display size from the frame size and target width, keeping the aspect ratio
       const scale = THUMB_DISPLAY_W / TW;
       const DW = THUMB_DISPLAY_W;
       const DH = Math.round(TH * scale);
-      // 缩略图固定到播放器水平中点，不跟随手指 / 进度球移动
+      // Pin the thumbnail to the player's horizontal center; it does not follow the finger / thumb
       const fixedLeft = Math.round(SCREEN_W / 2 - DW / 2);
       const raw = image[sheetIdx];
       if (!raw) return null;
-      // 兼容处理图床地址，确保以 http(s) 协议开头
+      // Normalize image host URLs so they start with http(s)
       const sheetUrl = raw.startsWith("//") ? `https:${raw}` : raw;
       return (
         <View
@@ -485,7 +485,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             }) => {
               currentTimeRef.current = ct;
               onTimeUpdate?.(ct);
-              // 续播持久化（5s 节流）
+              // Persist resume position (5s throttle)
               if (bvid && dur > 0) {
                 const nowSave = Date.now();
                 if (nowSave - lastSaveRef.current > 5000) {
@@ -493,7 +493,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                   usePlayProgressStore.getState().save(bvid, ct, dur);
                 }
               }
-              // 拖动进度条时跳过 UI 更新，避免与用户拖动冲突
+              // Skip UI updates while the progress bar is being dragged to avoid fighting the user
               if (isSeekingRef.current) return;
               const now = Date.now();
               if (now - lastProgressUpdate.current < 450) return;
@@ -503,9 +503,9 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
               setBuffered(buf);
             }}
             onLoad={() => {
-              // 首帧已就绪，撤掉 poster 挡片，让 <Video> 透出
+              // First frame is ready: remove the poster overlay so <Video> shows through
               setCoverVisible(false);
-              // 切清晰度后跳回原进度
+              // After a quality switch, jump back to the previous position
               const pending = pendingSeekRef.current;
               let didSeek = false;
               if (pending !== null && pending > 0) {
@@ -523,15 +523,15 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                   switchTimeoutRef.current = null;
                 }
               }
-              // seek 后部分播放器不自动恢复播放，需短暂 paused→false 触发 prop 变化
-              // 仅在确实 seek 时执行；走 seekHackPaused（不污染图标显示态），避免播放/暂停图标闪烁
+              // Some players do not resume after a seek; briefly toggle paused to false to trigger a prop change
+              // Only when a seek actually happened; uses seekHackPaused (not the icon state) so the play/pause icon does not flash
               if (didSeek && !forcePaused && !paused) {
                 setSeekHackPaused(true);
                 requestAnimationFrame(() => setSeekHackPaused(false));
               }
             }}
             onError={(e) => {
-              // 按降级链找下一档可用清晰度（从当前档位的下一档起，跳过不在 qualities 列表里的）
+              // Walk the fallback chain to the next available quality (starting below the current one, skipping any not in qualities)
               const FALLBACK_CHAIN = [126, 112, 80, 64, 32, 16];
               const idx = FALLBACK_CHAIN.indexOf(currentQn);
               if (idx >= 0) {
@@ -548,7 +548,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
             }}
           />
         ) : (
-          // 没拿到 resolvedUrl 之前用主题色 + 封面占位，避免页面背景 → 纯黑的撞色
+          // Before resolvedUrl arrives, use the theme color + cover as a placeholder to avoid a page-background-to-black clash
           <View style={[styles.placeholder, { backgroundColor: theme.card }]}>
             {!!coverUrl && (
               <Image
@@ -560,7 +560,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
           </View>
         )}
 
-        {/* poster 挡片：<Video> 已挂载但首帧未到达时显示封面 */}
+        {/* Poster overlay: shows the cover while <Video> is mounted but the first frame has not arrived */}
         {!!resolvedUrl && coverVisible && !!coverUrl && (
           <Image
             source={{ uri: coverUrl }}
@@ -573,7 +573,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         {switching && (
           <View style={styles.switchOverlay} pointerEvents="none">
             <ActivityIndicator color="#fff" size="small" />
-            <Text style={styles.switchText}>切换到 {currentDesc}…</Text>
+            <Text style={styles.switchText}>Switching to {currentDesc}…</Text>
           </View>
         )}
 
@@ -593,7 +593,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
 
         {showControls && (
           <>
-            {/*  小窗口 */}
+            {/*  Small player */}
             <LinearGradient
               colors={["rgba(0,0,0,0.55)", "transparent"]}
               style={styles.topBar}
@@ -708,7 +708,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                   style={styles.ctrlBtn}
                   onPress={() => setShowRate(true)}
                 >
-                  <Text style={styles.qualityText}>{rate === 1 ? "倍速" : `${rate}x`}</Text>
+                  <Text style={styles.qualityText}>{rate === 1 ? "Speed" : `${rate}x`}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.ctrlBtn}
@@ -737,14 +737,14 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
         )}
 
         {renderThumbnail()}
-        {/* 选清晰度 */}
+        {/* Quality picker */}
         <Modal visible={showQuality} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
             onPress={() => setShowQuality(false)}
           >
             <View style={[styles.qualityList, { backgroundColor: theme.modalBg }]}>
-              <Text style={[styles.qualityTitle, { color: theme.modalText }]}>选择清晰度</Text>
+              <Text style={[styles.qualityTitle, { color: theme.modalText }]}>Select quality</Text>
               {qualities.map((q) => (
                 <TouchableOpacity
                   key={q.qn}
@@ -774,14 +774,14 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
           </TouchableOpacity>
         </Modal>
 
-        {/* 选倍速 */}
+        {/* Speed picker */}
         <Modal visible={showRate} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
             onPress={() => setShowRate(false)}
           >
             <View style={[styles.qualityList, { backgroundColor: theme.modalBg }]}>
-              <Text style={[styles.qualityTitle, { color: theme.modalText }]}>选择倍速</Text>
+              <Text style={[styles.qualityTitle, { color: theme.modalText }]}>Select speed</Text>
               {RATE_OPTIONS.map((r) => (
                 <TouchableOpacity
                   key={r}
@@ -799,7 +799,7 @@ export const NativeVideoPlayer = forwardRef<NativeVideoPlayerRef, Props>(
                       r === rate && styles.qualityItemActive,
                     ]}
                   >
-                    {r === 1 ? "正常" : `${r}x`}
+                    {r === 1 ? "Normal" : `${r}x`}
                   </Text>
                   {r === rate && (
                     <Ionicons name="checkmark" size={16} color="#00AEEC" />

@@ -2,18 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
 
 /**
- * 控制底部 Sheet 的"挂载 + 滑入 / 滑出 + 卸载"时序。
+ * Controls the bottom sheet timing: mount + slide in / slide out + unmount.
  *
- * 用法：
+ * Usage:
  *   const { rendered, slideAnim } = useSheetTransition(visible, sheetH);
  *   if (!rendered) return null;
  *   <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>…</Animated.View>
  *
- * 关键行为：
- * - visible=true 时立刻 rendered=true 并触发"由下往上"滑入
- * - visible=false 时先反向滑出 240ms，结束才把 rendered 置 false（卸载 Modal）
- * - 中途反复切换 visible 不会错乱：被打断的 timing.start() 回调拿到的 finished=false，
- *   所以 rendered 不会在动画未完成时意外清掉。
+ * Key behavior:
+ * - visible=true sets rendered=true immediately and starts the bottom-up slide in
+ * - visible=false slides out for 240ms first, then sets rendered=false (unmounting the Modal)
+ * - Toggling visible repeatedly mid-animation is safe: an interrupted timing.start() callback gets finished=false,
+ *   so rendered is never cleared before the animation completes.
  */
 export function useSheetTransition(visible: boolean, sheetH: number) {
   const [rendered, setRendered] = useState(visible);

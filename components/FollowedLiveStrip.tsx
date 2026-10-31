@@ -47,7 +47,7 @@ export function FollowedLiveStrip() {
             <View style={styles.pulseRow}>
               <LivePulse />
               <Text style={{ color: "#fff", fontSize: 9, marginLeft: 2 }}>
-                直播
+                Live
               </Text>
             </View>
             <Image

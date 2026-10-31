@@ -4,20 +4,20 @@ import { Animated, Dimensions, PanResponder } from 'react-native';
 interface Options {
   width: number;
   height: number;
-  /** 命中"关闭按钮"区域的判定（locationX, locationY）→ true 时调 onClose，否则调 onTap */
+  /** Hit test for the "close button" area (locationX, locationY): true calls onClose, otherwise onTap */
   hitClose?: (locationX: number, locationY: number) => boolean;
   onTap: () => void;
   onClose?: () => void;
 }
 
 /**
- * 全局浮动小窗的拖拽 + 吸边 + 点击/关闭分发。
- * 返回 panHandlers 直接展开到容器，transform 应用 pan.getTranslateTransform()。
+ * Drag + edge snapping + tap/close dispatch for the global floating mini player.
+ * Spread the returned panHandlers on the container and apply pan.getTranslateTransform() as transform.
  */
 export function useMiniDrag({ width, height, hitClose, onTap, onClose }: Options) {
   const pan = useRef(new Animated.ValueXY()).current;
   const isDragging = useRef(false);
-  // 用 ref 保持最新回调，避免 PanResponder 闭包过期
+  // Keep the latest callbacks in refs so the PanResponder closure never goes stale
   const cbRef = useRef({ onTap, onClose, hitClose });
   cbRef.current = { onTap, onClose, hitClose };
 

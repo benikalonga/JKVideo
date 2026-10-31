@@ -2,9 +2,9 @@ import React, { useEffect, useRef, memo } from "react";
 import { View, StyleSheet, Animated } from "react-native";
 import { useTheme } from "../utils/theme";
 
-// 性能优化：颜色由顶层 useTheme 一次拿到，所有 block 走 inline style，避免 40+ store 订阅。
-// 布局：与详情页 ListHeaderComponent 结构同步 ——
-//   标题块 → Meta 行 → 动作按钮行 → 创作者行 → 推荐视频标题 → 推荐卡片
+// Performance: colors come from a single top-level useTheme and every block uses inline styles, avoiding 40+ store subscriptions.
+// Layout mirrors the detail page ListHeaderComponent:
+//   title block → meta row → action row → creator row → recommendations heading → recommendation cards
 
 interface BlockProps {
   width: number | `${number}%`;
@@ -43,7 +43,7 @@ const RelatedCardSkeleton = memo(function RelatedCardSkeleton({ bg, border }: { 
   );
 });
 
-// 一个动作按钮占位（pill 形状，匹配 VideoActionRow 实际按钮形态）
+// Placeholder for one action button (pill shape, matching the real VideoActionRow buttons)
 const ActionPillSkeleton = memo(function ActionPillSkeleton({ bg, width }: { bg: string; width: number }) {
   return <SkeletonBlock width={width} height={28} radius={14} bg={bg} />;
 });
@@ -70,14 +70,14 @@ export function VideoDetailSkeleton() {
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: theme.card, opacity }]}>
-      {/* 标题块（两行） + Meta 行 */}
+      {/* Title block (two lines) + meta row */}
       <View style={styles.titleBlock}>
         <SkeletonBlock width={"92%"} height={16} bg={bg} />
         <SkeletonBlock width={"60%"} height={16} bg={bg} style={{ marginTop: 8 }} />
         <SkeletonBlock width={"75%"} height={12} bg={bg} style={{ marginTop: 10 }} />
       </View>
 
-      {/* 动作按钮行 */}
+      {/* Action button row */}
       <View style={[styles.actionRow, { borderTopColor: border }]}>
         <ActionPillSkeleton bg={bg} width={72} />
         <ActionPillSkeleton bg={bg} width={72} />
@@ -86,7 +86,7 @@ export function VideoDetailSkeleton() {
         <ActionPillSkeleton bg={bg} width={72} />
       </View>
 
-      {/* 创作者行 + 关注按钮 */}
+      {/* Creator row + follow button */}
       <View style={[styles.creatorRow, { borderTopColor: border, borderBottomColor: border }]}>
         <SkeletonBlock width={38} height={38} radius={19} bg={bg} />
         <View style={styles.creatorInfo}>
@@ -96,12 +96,12 @@ export function VideoDetailSkeleton() {
         <SkeletonBlock width={56} height={28} radius={14} bg={bg} />
       </View>
 
-      {/* 推荐视频标题 */}
+      {/* Recommended videos heading */}
       <View style={styles.relatedHeader}>
         <SkeletonBlock width={64} height={13} bg={bg} />
       </View>
 
-      {/* 推荐卡片占位（4 张足够撑满首屏，少绘制开销） */}
+      {/* Recommendation card placeholders (4 fill the first screen with less drawing) */}
       {Array.from({ length: CARD_COUNT }).map((_, i) => (
         <RelatedCardSkeleton key={i} bg={bg} border={border} />
       ))}

@@ -50,11 +50,11 @@ export default function DownloadsScreen() {
   function confirmDelete(key: string, status: DownloadTask['status']) {
     const isDownloading = status === 'downloading';
     Alert.alert(
-      isDownloading ? '取消下载' : '删除下载',
-      isDownloading ? '确定取消该下载任务？' : '确定删除该文件？删除后不可恢复。',
+      isDownloading ? 'Cancel download' : 'Delete download',
+      isDownloading ? 'Cancel this download?' : 'Delete this file? This cannot be undone.',
       [
-        { text: '取消', style: 'cancel' },
-        { text: isDownloading ? '取消下载' : '删除', style: 'destructive', onPress: () => removeTask(key) },
+        { text: 'Cancel', style: 'cancel' },
+        { text: isDownloading ? 'Cancel download' : 'Delete', style: 'destructive', onPress: () => removeTask(key) },
       ],
     );
   }
@@ -68,8 +68,8 @@ export default function DownloadsScreen() {
   const done = all.filter((t) => t.status === 'done');
 
   const sections = [];
-  if (downloading.length > 0) sections.push({ title: '下载中', data: downloading });
-  if (done.length > 0) sections.push({ title: '已下载', data: done });
+  if (downloading.length > 0) sections.push({ title: 'Downloading', data: downloading });
+  if (done.length > 0) sections.push({ title: 'Downloaded', data: done });
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
@@ -77,14 +77,14 @@ export default function DownloadsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.topTitle, { color: theme.text }]}>我的下载</Text>
+        <Text style={[styles.topTitle, { color: theme.text }]}>My downloads</Text>
         <View style={{ width: 32 }} />
       </View>
 
       {sections.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="cloud-download-outline" size={56} color={theme.textSub} />
-          <Text style={[styles.emptyTxt, { color: theme.textSub }]}>暂无下载记录</Text>
+          <Text style={[styles.emptyTxt, { color: theme.textSub }]}>No downloads yet</Text>
         </View>
       ) : (
         <SectionList
@@ -187,9 +187,9 @@ function DownloadRow({
         )}
         {isError && (
           <View style={styles.errorRow}>
-            <Text style={styles.errorTxt} numberOfLines={1}>{task.error ?? '下载失败'}</Text>
+            <Text style={styles.errorTxt} numberOfLines={1}>{task.error ?? 'Download failed'}</Text>
             <TouchableOpacity onPress={onRetry} style={styles.retryBtn}>
-              <Text style={styles.retryTxt}>重新下载</Text>
+              <Text style={styles.retryTxt}>Download again</Text>
             </TouchableOpacity>
           </View>
         )}

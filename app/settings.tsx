@@ -28,17 +28,17 @@ export default function SettingsScreen() {
   }, []);
 
   const handleClearCache = async () => {
-    Alert.alert('清除缓存', '确定要清除所有缓存吗？', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert('Clear cache', 'Clear all cached data?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: '清除',
+        text: 'Clear',
         style: 'destructive',
         onPress: async () => {
           setClearingCache(true);
           await clearImageCache();
           setClearingCache(false);
           setCacheSize(0);
-          Alert.alert('已完成', '缓存已清除');
+          Alert.alert('Done', 'Cache cleared');
         },
       },
     ]);
@@ -55,20 +55,20 @@ export default function SettingsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.topTitle, { color: theme.text }]}>设置</Text>
+        <Text style={[styles.topTitle, { color: theme.text }]}>Settings</Text>
         <View style={styles.spacer} />
       </View>
 
       <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>版本信息</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>Version</Text>
         <View style={styles.versionRow}>
-          <Text style={[styles.versionLabel, { color: theme.text }]}>当前版本</Text>
+          <Text style={[styles.versionLabel, { color: theme.text }]}>Current version</Text>
           <Text style={[styles.versionValue, { color: theme.textSub }]}>v{currentVersion}</Text>
         </View>
       </View>
 
       <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>更新</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>Updates</Text>
         <TouchableOpacity
           style={styles.updateBtn}
           onPress={checkUpdate}
@@ -78,68 +78,68 @@ export default function SettingsScreen() {
           {isChecking ? (
             <>
               <ActivityIndicator size="small" color="#00AEEC" style={{ marginRight: 8 }} />
-              <Text style={styles.updateBtnText}>检查中...</Text>
+              <Text style={styles.updateBtnText}>Checking...</Text>
             </>
           ) : downloadProgress !== null ? (
-            <Text style={styles.updateBtnText}>下载中 {downloadProgress}%</Text>
+            <Text style={styles.updateBtnText}>Downloading {downloadProgress}%</Text>
           ) : (
-            <Text style={styles.updateBtnText}>检查更新</Text>
+            <Text style={styles.updateBtnText}>Check for updates</Text>
           )}
         </TouchableOpacity>
       </View>
 
       <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>外观</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>Appearance</Text>
         <View style={styles.optionRow}>
           <TouchableOpacity
             style={[styles.option, { backgroundColor: theme.inputBg }, !darkMode && styles.optionActive]}
             onPress={() => setDarkMode(false)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, { color: theme.text }, !darkMode && styles.optionTextActive]}>浅色</Text>
+            <Text style={[styles.optionText, { color: theme.text }, !darkMode && styles.optionTextActive]}>Light</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.option, { backgroundColor: theme.inputBg }, darkMode && styles.optionActive]}
             onPress={() => setDarkMode(true)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, { color: theme.text }, darkMode && styles.optionTextActive]}>深色</Text>
+            <Text style={[styles.optionText, { color: theme.text }, darkMode && styles.optionTextActive]}>Dark</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>流量</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>Data usage</Text>
         <View style={styles.optionRow}>
           <TouchableOpacity
             style={[styles.option, { backgroundColor: theme.inputBg }, !trafficSaving && styles.optionActive]}
             onPress={() => setTrafficSaving(false)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, { color: theme.text }, !trafficSaving && styles.optionTextActive]}>标准</Text>
+            <Text style={[styles.optionText, { color: theme.text }, !trafficSaving && styles.optionTextActive]}>Standard</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.option, { backgroundColor: theme.inputBg }, trafficSaving && styles.optionActive]}
             onPress={() => setTrafficSaving(true)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, { color: theme.text }, trafficSaving && styles.optionTextActive]}>节流</Text>
+            <Text style={[styles.optionText, { color: theme.text }, trafficSaving && styles.optionTextActive]}>Data saver</Text>
           </TouchableOpacity>
         </View>
         {trafficSaving && (
           <Text style={[styles.hint, { color: theme.textSub }]}>
-            封面低画质 · 首页视频不自动播放 · 视频默认 360p
+            Low-quality covers · no autoplay on the home feed · videos default to 360p
           </Text>
         )}
       </View>
 
       <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>存储</Text>
+        <Text style={[styles.sectionLabel, { color: theme.textSub }]}>Storage</Text>
         <View style={styles.cacheRow}>
           <View>
-            <Text style={[styles.cacheLabel, { color: theme.text }]}>缓存大小</Text>
+            <Text style={[styles.cacheLabel, { color: theme.text }]}>Cache size</Text>
             <Text style={[styles.cacheValue, { color: theme.textSub }]}>
-              {cacheSize === null ? '计算中...' : formatBytes(cacheSize)}
+              {cacheSize === null ? 'Calculating...' : formatBytes(cacheSize)}
             </Text>
           </View>
           <TouchableOpacity
@@ -150,7 +150,7 @@ export default function SettingsScreen() {
           >
             {clearingCache
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={styles.clearBtnText}>清除缓存</Text>
+              : <Text style={styles.clearBtnText}>Clear cache</Text>
             }
           </TouchableOpacity>
         </View>
@@ -158,7 +158,7 @@ export default function SettingsScreen() {
 
       {isLoggedIn && (
         <TouchableOpacity style={[styles.logoutBtn, { borderColor: theme.danger }]} onPress={handleLogout} activeOpacity={0.8}>
-          <Text style={[styles.logoutText, { color: theme.danger }]}>退出登录</Text>
+          <Text style={[styles.logoutText, { color: theme.danger }]}>Sign out</Text>
         </TouchableOpacity>
       )}
     </SafeAreaView>

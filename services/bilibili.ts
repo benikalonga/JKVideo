@@ -65,7 +65,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// 被动累积：任何响应 Set-Cookie 里出现 bili_jct 都顺手存下来。覆盖老用户没有 CSRF 的情况。
+// Passive capture: store bili_jct whenever any response's Set-Cookie contains it. Covers older users who have no CSRF token.
 api.interceptors.response.use(async (response) => {
   if (isWeb) return response;
   const setCookie = response.headers?.['set-cookie'];
@@ -99,8 +99,8 @@ function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * 指数退避重试包装。仅对网络层面错误（无 response、5xx、超时）重试；
- * 业务错误（如 401/403/-352）直接抛出，不重试。
+ * Exponential backoff retry wrapper. Retries only network-level errors (no response, 5xx, timeout);
+ * business errors (e.g. 401/403/-352) are thrown immediately without retrying.
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
@@ -189,7 +189,7 @@ export async function getVideoRelated(bvid: string): Promise<VideoItem[]> {
 
 export function getPlayUrl(bvid: string, cid: number, qn = 64): Promise<PlayUrlResponse> {
   const isAndroid = Platform.OS === 'android';
-  // 1488 = 16(DASH)|64(HDR)|128(4K)|256(杜比全景声)|1024(杜比视界)
+  // 1488 = 16(DASH)|64(HDR)|128(4K)|256(Dolby Atmos)|1024(Dolby Vision)
   const FNVAL_ANDROID = 16 | 64 | 128 | 256 | 1024;
   const params = isAndroid
     ? { bvid, cid, qn, fnval: FNVAL_ANDROID, fourk: 1 }
@@ -211,12 +211,12 @@ export async function getPlayUrlForDownload(
     params: { bvid, cid, qn, fnval: 0, platform: 'html5' },
   });
   if (res.data?.code !== 0) {
-    throw new Error(`API ${res.data?.code}: ${res.data?.message ?? '请求失败'}`);
+    throw new Error(`API ${res.data?.code}: ${res.data?.message ?? 'Request failed'}`);
   }
   const durlItem = res.data?.data?.durl?.[0];
-  // 优先用主 URL，主 URL 失效时退到 backup_url
+  // Prefer the main URL; fall back to backup_url when it fails
   const url: string | undefined = durlItem?.url || (durlItem?.backup_url as string[] | undefined)?.[0];
-  if (!url) throw new Error('无法获取下载地址（durl 为空）');
+  if (!url) throw new Error('Could not get a download URL (durl is empty)');
   return url;
 }
 
@@ -346,7 +346,7 @@ export async function pollQRCode(qrcode_key: string): Promise<{ code: number; co
   return { code, cookie, csrf };
 }
 
-// 查关注状态（attribute: 0=未关注, 2=关注, 6=互相关注）
+// Get follow status (attribute: 0 = not following, 2 = following, 6 = mutual)
 export async function getRelation(mid: number): Promise<{ following: boolean; mutual: boolean }> {
   try {
     const res = await api.get('/x/relation', { params: { fid: mid } });
@@ -360,7 +360,7 @@ export async function getRelation(mid: number): Promise<{ following: boolean; mu
   }
 }
 
-/** 修改与 UP 主的关系：act=1 关注，act=2 取消关注。失败抛错（消息文本来自 B 站 code/message） */
+/** Change the relationship with a creator: act=1 follow, act=2 unfollow. Throws on failure (message text comes from Bilibili's code/message) */
 export async function modifyRelation(mid: number, act: 1 | 2): Promise<void> {
   const biliJct = await getSecure('bili_jct');
   if (!biliJct) throw new Error('NO_CSRF');
@@ -384,7 +384,7 @@ const LIVE_BASE = isWeb ? 'http://localhost:3001/bilibili-live' : 'https://api.l
 
 export async function getLiveList(page = 1, parentAreaId = 0): Promise<LiveRoom[]> {
   if (parentAreaId === 0) {
-    // 推荐：使用原有接口
+    // Recommended: use the original endpoint
     const res = await api.get(`${LIVE_BASE}/xlive/web-interface/v1/webMain/getMoreRecList`, {
       params: { platform: 'web', page, page_size: 20 },
     });
@@ -401,7 +401,7 @@ export async function getLiveList(page = 1, parentAreaId = 0): Promise<LiveRoom[
       parent_area_name: item.area_v2_parent_name ?? '',
     }));
   }
-  // 分区筛选：使用 getRoomList 接口
+  // Category filter: use the getRoomList endpoint
   const res = await api.get(`${LIVE_BASE}/room/v1/area/getRoomList`, {
     params: {
       parent_area_id: parentAreaId,
@@ -528,7 +528,7 @@ export async function getLiveDanmakuHistory(roomId: number): Promise<{
   danmakus: DanmakuItem[];
   adminMsgs: string[];
 }> {
-  // gethistory 默认返回 ~10 条；尝试带 count 参数拉更多，B 站不支持时会自动忽略
+  // gethistory returns ~10 items by default; try a count parameter to get more (Bilibili ignores it if unsupported)
   const res = await api.get(`${LIVE_BASE}/xlive/web-room/v1/dM/gethistory`, {
     params: { roomid: roomId, room_id: roomId, count: 30 },
   });
@@ -555,7 +555,7 @@ export async function getLiveDanmakuHistory(roomId: number): Promise<{
 export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
   return withRetry(async () => {
     if (isWeb) {
-      // web 走代理，代理已解压，直接拿文本
+      // Web goes through the proxy, which already decompresses, so read the text directly
       const res = await axios.get(`${COMMENT_BASE}/${cid}.xml`, {
         headers: {},
         responseType: 'text',
@@ -563,7 +563,7 @@ export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
       return parseDanmakuXml(res.data);
     }
 
-    // Native：arraybuffer + 逐一尝试解压（服务器强制压缩，无法避免）
+    // Native: arraybuffer + try each decompression in turn (the server always compresses)
     const res = await axios.get(`${COMMENT_BASE}/${cid}.xml`, {
       headers: { Referer: 'https://www.bilibili.com', 'User-Agent': UA },
       responseType: 'arraybuffer',
@@ -572,17 +572,17 @@ export async function getDanmaku(cid: number): Promise<DanmakuItem[]> {
     const bytes = new Uint8Array(res.data as ArrayBuffer);
     let xmlText: string | undefined;
 
-    // 依次尝试：inflate (gzip/zlib) → inflateRaw (raw deflate)
+    // Try in order: inflate (gzip/zlib) → inflateRaw (raw deflate)
     for (const fn of [pako.inflate, pako.inflateRaw] as Array<(input: Uint8Array, opts: pako.InflateOptions) => string>) {
       try {
         xmlText = fn(bytes, { to: 'string' });
         if (xmlText.includes('<d ')) break;
         xmlText = undefined;
-      } catch { /* 继续尝试下一种 */ }
+      } catch { /* try the next one */ }
     }
 
     if (!xmlText) {
-      // 最后尝试当作明文
+      // Finally, try treating it as plain text
       xmlText = new TextDecoder('utf-8').decode(bytes);
     }
 
@@ -601,7 +601,7 @@ export async function getFollowedLiveRooms(): Promise<LiveRoom[]> {
     console.warn('getFollowedLiveRooms error:', res.data?.code, res.data?.message);
     return [];
   }
-  // B站不同版本接口返回字段可能为 list 或 rooms
+  // Different Bilibili API versions may return the field as list or rooms
   const list: any[] = res.data?.data?.list ?? res.data?.data?.rooms ?? [];
   return list.map((r: any) => ({
     roomid: r.room_id ?? r.roomid,

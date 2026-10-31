@@ -19,9 +19,9 @@ import { useTheme } from '../utils/theme';
 import type { VideoItem } from '../services/types';
 
 const SORT_OPTIONS: { key: SearchSort; label: string }[] = [
-  { key: 'default', label: '综合排序' },
-  { key: 'pubdate', label: '最新发布' },
-  { key: 'view', label: '最多播放' },
+  { key: 'default', label: 'Best match' },
+  { key: 'pubdate', label: 'Newest' },
+  { key: 'view', label: 'Most viewed' },
 ];
 
 export default function SearchScreen() {
@@ -122,7 +122,7 @@ export default function SearchScreen() {
     return (
       <View style={styles.emptyBox}>
         <Ionicons name="search-outline" size={48} color="#ddd" />
-        <Text style={[styles.emptyText, { color: theme.textSub }]}>没有找到相关视频</Text>
+        <Text style={[styles.emptyText, { color: theme.textSub }]}>No matching videos found</Text>
       </View>
     );
   };
@@ -138,7 +138,7 @@ export default function SearchScreen() {
           <TextInput
             ref={inputRef}
             style={[styles.input, { color: theme.text }]}
-            placeholder="搜索视频、UP主..."
+            placeholder="Search videos and creators..."
             placeholderTextColor="#999"
             value={keyword}
             onChangeText={setKeyword}
@@ -155,7 +155,7 @@ export default function SearchScreen() {
           )}
         </View>
         <TouchableOpacity style={styles.searchBtn} onPress={() => handleSearch()} activeOpacity={0.85}>
-          <Text style={styles.searchBtnText}>搜索</Text>
+          <Text style={styles.searchBtnText}>Search</Text>
         </TouchableOpacity>
       </View>
 
@@ -183,7 +183,7 @@ export default function SearchScreen() {
           {history.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>搜索历史</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Search history</Text>
                 <TouchableOpacity onPress={clearHistory} activeOpacity={0.85}>
                   <Ionicons name="trash-outline" size={16} color={theme.textSub} />
                 </TouchableOpacity>
@@ -207,7 +207,7 @@ export default function SearchScreen() {
           {/* Hot searches */}
           {hotSearches.length > 0 && (
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>热搜榜</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Trending searches</Text>
               {hotSearches.map((item, idx) => (
                 <TouchableOpacity
                   key={item.keyword}
@@ -232,7 +232,7 @@ export default function SearchScreen() {
           {history.length === 0 && hotSearches.length === 0 && (
             <View style={styles.emptyBox}>
               <Ionicons name="search-outline" size={48} color="#ddd" />
-              <Text style={[styles.emptyText, { color: theme.textSub }]}>输入关键词搜索</Text>
+              <Text style={[styles.emptyText, { color: theme.textSub }]}>Enter a keyword to search</Text>
             </View>
           )}
         </ScrollView>

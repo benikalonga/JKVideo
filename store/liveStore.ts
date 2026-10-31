@@ -4,7 +4,7 @@ interface LiveStore {
   isActive: boolean;
   roomId: number;
   title: string;
-  cover: string;       // room.keyframe（直播截图）用于 web 端降级封面
+  cover: string;       // room.keyframe (live snapshot) used as the web fallback cover
   hlsUrl: string;
   setLive: (roomId: number, title: string, cover: string, hlsUrl: string) => void;
   clearLive: () => void;

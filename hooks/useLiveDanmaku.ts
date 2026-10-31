@@ -4,13 +4,13 @@ import type { DanmakuItem } from '../services/types';
 
 const POLL_INTERVAL = 1500;
 
-// 匹配 admin 消息中的礼物信息，如 "xxx 赠送了 辣条 x5" 或 "xxx 投喂 小心心 ×1"
-const GIFT_PATTERN = /(?:赠送|投喂)\s*(?:了\s*)?(.+?)\s*[xX×]\s*(\d+)/;
+// Matches gift info in admin messages (Bilibili sends these in Chinese), e.g. "xxx gave <gift> x5" or "xxx fed <gift> ×1". Escapes: \u8d60\u9001 = "gave", \u6295\u5582 = "fed".
+const GIFT_PATTERN = /(?:\u8d60\u9001|\u6295\u5582)\s*(?:\u4e86\s*)?(.+?)\s*[xX\u00d7]\s*(\d+)/;
 
-// 常见礼物名列表，用于匹配
+// Common gift names as Bilibili sends them (Chinese, escaped): spicy strip, little heart, call, cheers, heart hands,
 const KNOWN_GIFTS = new Set([
-  '辣条', '小心心', '打call', '干杯', '比心',
-  '吃瓜', '花式夸夸', '告白气球', '小电视飞船',
+  '\u8fa3\u6761', '\u5c0f\u5fc3\u5fc3', '\u6253call', '\u5e72\u676f', '\u6bd4\u5fc3',
+  '\u5403\u74dc', '\u82b1\u5f0f\u5938\u5938', '\u544a\u767d\u6c14\u7403', '\u5c0f\u7535\u89c6\u98de\u8239', // watching, fancy praise, love balloon, TV spaceship
 ]);
 
 export function useLiveDanmaku(roomId: number): {
@@ -36,8 +36,8 @@ export function useLiveDanmaku(roomId: number): {
         const { danmakus: items, adminMsgs } = await getLiveDanmakuHistory(roomId);
         if (cancelled) return;
 
-        // 去重弹幕：以 uname + text + timeline 为 key
-        // 用 timeline 区分"同一人重复发同句"的合法重复（gethistory 多次轮询会返回相同尾部数据，靠 timeline 过滤掉）
+        // Deduplicate danmaku: key is uname + text + timeline
+        // timeline separates legitimate repeats of the same message by the same person (gethistory polling returns the same tail data repeatedly; timeline filters it out)
         const newItems = items.filter(item => {
           const key = `${item.uname ?? ''}:${item.text}:${item.timeline ?? ''}`;
           if (seenTextsRef.current.has(key)) return false;
@@ -48,10 +48,10 @@ export function useLiveDanmaku(roomId: number): {
           setDanmakus(prev => [...prev, ...newItems]);
         }
 
-        // 解析 admin 消息中的礼物
+        // Parse gifts from admin messages
         const newGifts: Record<string, number> = {};
         for (const msg of adminMsgs) {
-          // 去重 admin 消息
+          // Deduplicate admin messages
           if (seenAdminRef.current.has(msg)) continue;
           seenAdminRef.current.add(msg);
 
@@ -74,7 +74,7 @@ export function useLiveDanmaku(roomId: number): {
           });
         }
 
-        // 防止 seen set 无限增长
+        // Keep the seen set from growing without bound
         if (seenTextsRef.current.size > 2000) {
           const arr = Array.from(seenTextsRef.current);
           seenTextsRef.current = new Set(arr.slice(-1000));

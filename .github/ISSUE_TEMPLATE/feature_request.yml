@@ -1,41 +1,41 @@
-name: 功能建议
-description: 建议一个新功能或改进
+name: Feature request
+description: Suggest a new feature or improvement
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        感谢你的建议！在提交前请先搜索现有 Issue，避免重复。
+        Thanks for the suggestion! Please search existing issues first to avoid duplicates.
 
   - type: textarea
     id: problem
     attributes:
-      label: 需求背景
-      placeholder: 这个功能解决了什么问题？目前的痛点是什么？
+      label: Background
+      placeholder: What problem does this feature solve? What is the current pain point?
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: 建议方案
-      placeholder: 你期望的功能是怎样的？
+      label: Proposed solution
+      placeholder: How should the feature work?
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: 替代方案
-      placeholder: 你是否考虑过其他方案？
+      label: Alternatives
+      placeholder: Have you considered other approaches?
 
   - type: dropdown
     id: contribute
     attributes:
-      label: 是否愿意提交 PR？
+      label: Would you like to submit a PR?
       options:
-        - 是，我愿意实现这个功能
-        - 否，希望维护者实现
-        - 不确定
+        - Yes, I would like to implement this
+        - No, I would like a maintainer to implement it
+        - Not sure
     validations:
       required: true

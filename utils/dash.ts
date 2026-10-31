@@ -2,8 +2,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { PlayUrlResponse, DashAudioItem } from '../services/types';
 
 /**
- * 将 Bilibili DASH 响应写成 MPD 文件，返回 file:// URI 供 ExoPlayer 播放。
- * 选取 id === qn 的视频流（找不到则取第一条），带宽最高的音频流。
+ * Writes a Bilibili DASH response as an MPD file and returns a file:// URI for ExoPlayer.
+ * Picks the video stream with id === qn (or the first one if not found) and the highest-bandwidth audio stream.
  */
 export async function buildDashMpdUri(
   playData: PlayUrlResponse,
@@ -11,14 +11,14 @@ export async function buildDashMpdUri(
   bvid?: string,
 ): Promise<string> {
   const xml = buildMpdXml(playData, qn);
-  // 带 bvid 区分，避免不同视频在同一 qn 上复用同一文件名导致命中过期 MPD
+  // Include bvid so different videos at the same qn never reuse a file name and hit a stale MPD
   const suffix = bvid ? `${bvid}_${qn}` : String(qn);
   const path = `${FileSystem.cacheDirectory}bili_dash_${suffix}.mpd`;
   await FileSystem.writeAsStringAsync(path, xml, { encoding: FileSystem.EncodingType.UTF8 });
   return path;
 }
 
-/** 删除指定视频的所有清晰度 MPD 缓存（详情页卸载时调用） */
+/** Delete the MPD cache for every quality of a video (called when the detail page unmounts) */
 export async function cleanupDashMpd(bvid: string): Promise<void> {
   if (!bvid || !FileSystem.cacheDirectory) return;
   try {
@@ -30,7 +30,7 @@ export async function cleanupDashMpd(bvid: string): Promise<void> {
       ),
     );
   } catch {
-    // 忽略，缓存清理失败不影响功能
+    // Ignore; a failed cache cleanup does not affect functionality
   }
 }
 
@@ -43,7 +43,7 @@ function buildMpdXml(playData: PlayUrlResponse, qn: number): string {
 
   const video = dash.video.find(v => v.id === qn) ?? dash.video[0];
 
-  // 优先使用杜比全景声音轨，回退到带宽最高的普通音轨
+  // Prefer the Dolby Atmos audio track; fall back to the highest-bandwidth regular track
   const dolbyAudios = playData.dolby?.audio;
   const audio: DashAudioItem = (dolbyAudios && dolbyAudios.length > 0)
     ? dolbyAudios.reduce((best, a) => a.bandwidth > best.bandwidth ? a : best)

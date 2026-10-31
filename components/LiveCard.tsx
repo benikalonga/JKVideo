@@ -48,7 +48,7 @@ export const LiveCard = React.memo(function LiveCard({
         />
         <View style={styles.liveBadge}>
           {isLivePulse && <LivePulse />}
-          <Text style={styles.liveBadgeText}>直播</Text>
+          <Text style={styles.liveBadgeText}>Live</Text>
         </View>
         <View style={styles.meta}>
           <Ionicons name="people" size={11} color="#fff" />

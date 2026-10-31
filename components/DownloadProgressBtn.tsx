@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDownloadStore } from '../store/downloadStore';
 import { useTheme } from '../utils/theme';
 
-const SIZE = 32;   // 环外径
-const RING = 3;    // 环宽
+const SIZE = 32;   // Ring outer diameter
+const RING = 3;    // Ring width
 const BLUE = '#00AEEC';
 const INNER = SIZE - RING * 2;
 
@@ -25,7 +25,7 @@ export function DownloadProgressBtn({ onPress }: Props) {
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.btn} activeOpacity={0.7}>
-      {/* 进度环，绝对定位居中 */}
+      {/* Progress ring, absolutely centered */}
       {/* {hasDownloading && (
         <View style={styles.ringWrap} pointerEvents="none">
           <RingProgress progress={avgProgress} />
@@ -41,39 +41,39 @@ export function DownloadProgressBtn({ onPress }: Props) {
 }
 
 /**
- * 双半圆裁剪法绘制圆弧进度
+ * Draws arc progress with two clipped half circles
  *
- * 两个「D 形」(实心半圆) 分别放在左/右裁剪容器中，
- * 旋转 D 形就能在容器内扫出弧形，配合白色内圆变成环形。
+ * Two "D shapes" (solid half circles) sit in left/right clipping containers;
+ * rotating a D sweeps an arc inside its container, and a white inner circle turns it into a ring.
  *
- * 旋转轴 = D 形 View 的默认中心 = 外圆圆心，无需 transformOrigin。
+ * Rotation axis = the D view's default center = the outer circle's center, so no transformOrigin is needed.
  */
 function RingProgress({ progress }: { progress: number }) {
   const p = Math.max(0, Math.min(1, progress));
 
-  // 右半弧：进度 0→50%，右 D 从 -180°→0°（顺时针）
+  // Right half arc: progress 0→50%, right D rotates from -180° to 0° (clockwise)
   const rightAngle = -180 + Math.min(p * 2, 1) * 180;
-  // 左半弧：进度 50%→100%，左 D 从 180°→0°
+  // Left half arc: progress 50%→100%, left D rotates from 180° to 0°
   const leftAngle = 180 - Math.max(0, p * 2 - 1) * 180;
 
   return (
     <View style={styles.ring}>
-      {/* 灰色背景环 */}
+      {/* Gray background ring */}
       <View style={styles.ringBg} />
 
-      {/* ── 右裁剪：左边缘 = 圆心，只露右半 ── */}
+      {/* ── Right clip: left edge = center, shows only the right half ── */}
       <View style={styles.rightClip}>
-        {/* left: -SIZE/2 → D 形中心落在容器左边缘 = 外圆圆心 */}
+        {/* left: -SIZE/2 puts the D center on the container's left edge = outer circle center */}
         <View style={[styles.dRight, { transform: [{ rotate: `${rightAngle}deg` }] }]} />
       </View>
 
-      {/* ── 左裁剪：右边缘 = 圆心，只露左半 ── */}
+      {/* ── Left clip: right edge = center, shows only the left half ── */}
       <View style={styles.leftClip}>
-        {/* left: 0 → D 形中心在容器右边缘 = 外圆圆心 */}
+        {/* left: 0 puts the D center on the container's right edge = outer circle center */}
         <View style={[styles.dLeft, { transform: [{ rotate: `${leftAngle}deg` }] }]} />
       </View>
 
-      {/* 白色内圆，把实心扇区变成环形 */}
+      {/* White inner circle that turns the solid sector into a ring */}
       <View style={styles.inner} />
     </View>
   );
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // 绝对定位居中，overflow:hidden 防止 D 形溢出
+  // Absolutely centered; overflow:hidden keeps the D shapes from spilling out
   ringWrap: {
     position: 'absolute',
     top: 4,
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
 
-  // 右裁剪容器：left = SIZE/2（圆心处），宽 SIZE/2，只露右半
+  // Right clip container: left = SIZE/2 (the center), width SIZE/2, shows only the right half
   rightClip: {
     position: 'absolute',
     left: SIZE / 2,
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     height: SIZE,
     overflow: 'hidden',
   },
-  // 右 D 形（右半圆）：left = -SIZE/2 → center = (0, SIZE/2) in clip = 外圆圆心
+  // Right D (right half circle): left = -SIZE/2 → center = (0, SIZE/2) in clip = outer circle center
   dRight: {
     position: 'absolute',
     left: -SIZE / 2,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
   },
 
-  // 左裁剪容器：right = SIZE/2（圆心处），宽 SIZE/2，只露左半
+  // Left clip container: right = SIZE/2 (the center), width SIZE/2, shows only the left half
   leftClip: {
     position: 'absolute',
     left: 0,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     height: SIZE,
     overflow: 'hidden',
   },
-  // 左 D 形（左半圆）：left = 0 → center = (SIZE/2, SIZE/2) in clip = 外圆圆心
+  // Left D (left half circle): left = 0 → center = (SIZE/2, SIZE/2) in clip = outer circle center
   dLeft: {
     position: 'absolute',
     left: 0,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
   },
 
-  // 白色内圆（遮住 D 形中心，留出环宽）
+  // White inner circle (covers the D centers, leaving the ring width)
   inner: {
     width: INNER,
     height: INNER,

@@ -52,19 +52,19 @@ const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 50 };
 type TabKey = "hot" | "live";
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: "hot", label: "热门" },
-  { key: "live", label: "直播" },
+  { key: "hot", label: "Trending" },
+  { key: "live", label: "Live" },
 ];
 
 const LIVE_AREAS = [
-  { id: 0, name: "推荐" },
-  { id: 2, name: "网游" },
-  { id: 3, name: "手游" },
-  { id: 6, name: "单机游戏" },
-  { id: 1, name: "娱乐" },
-  { id: 9, name: "虚拟主播" },
-  { id: 10, name: "生活" },
-  { id: 11, name: "知识" },
+  { id: 0, name: "Recommended" },
+  { id: 2, name: "Online games" },
+  { id: 3, name: "Mobile games" },
+  { id: 6, name: "PC games" },
+  { id: 1, name: "Entertainment" },
+  { id: 9, name: "VTubers" },
+  { id: 10, name: "Lifestyle" },
+  { id: 11, name: "Knowledge" },
 ];
 
 export default function HomeScreen() {
@@ -99,12 +99,12 @@ export default function HomeScreen() {
     },
   ).current;
 
-  // 滚动累计阈值：方向反转后需累计滚动该距离才触发显隐切换
+  // Accumulated scroll threshold: after the direction flips, scroll this far before toggling visibility
   const SCROLL_THRESHOLD = 40;
-  // 显隐过渡时长
+  // Show/hide transition duration
   const HEADER_ANIM_MS = 100;
 
-  const headerOffset = useRef(new Animated.Value(0)).current; // 0 = 显示，HEADER_H = 隐藏
+  const headerOffset = useRef(new Animated.Value(0)).current; // 0 = shown, HEADER_H = hidden
   const liveHeaderOffset = useRef(new Animated.Value(0)).current;
 
   const headerTranslate = headerOffset.interpolate({
@@ -149,7 +149,7 @@ export default function HomeScreen() {
       state: { lastY: number; acc: number; dir: number; hidden: boolean },
       offset: Animated.Value,
     ) => {
-      // 顶部强制显示
+      // Always show at the top
       if (y <= 0) {
         if (state.hidden) {
           state.hidden = false;
@@ -163,7 +163,7 @@ export default function HomeScreen() {
       const dy = y - state.lastY;
       state.lastY = y;
       if (Math.abs(dy) < 1) return;
-      const dir = dy > 0 ? 1 : -1; // 1=向下滚（隐藏），-1=向上滚（显示）
+      const dir = dy > 0 ? 1 : -1; // 1 = scrolling down (hide), -1 = scrolling up (show)
       if (dir !== state.dir) {
         state.dir = dir;
         state.acc = 0;
@@ -207,7 +207,7 @@ export default function HomeScreen() {
   const handleTabPress = useCallback(
     (key: TabKey) => {
       if (key === activeTab) {
-        // 点击已激活的 tab：滚动到顶部并刷新
+        // Tapping the active tab: scroll to top and refresh
         if (key === "hot") {
           hotListRef.current?.scrollToOffset({ offset: 0, animated: true });
           refresh();
@@ -217,7 +217,7 @@ export default function HomeScreen() {
         }
         return;
       }
-      // 切换 tab
+      // Switch tab
       pagerRef.current?.setPage(key === "hot" ? 0 : 1);
       setActiveTab(key);
       if (key === "live" && rooms.length === 0) {
@@ -301,7 +301,7 @@ export default function HomeScreen() {
     [],
   );
 
-  // 将直播列表分成两列的行
+  // Split the live list into rows of two columns
   const liveRows = useMemo(() => {
     const result: { left: LiveRoom; right?: LiveRoom }[] = [];
     for (let i = 0; i < rooms.length; i += 2) {
@@ -317,7 +317,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]} edges={["left", "right"]}>
-      {/* 滑动切换容器 */}
+      {/* Swipeable tab container */}
       <PagerView
         ref={pagerRef}
         style={styles.pager}
@@ -325,7 +325,7 @@ export default function HomeScreen() {
         scrollEnabled={false}
         onPageSelected={onPageSelected}
       >
-        {/* 热门列表 */}
+        {/* Trending list */}
         <View key="hot" collapsable={false}>
           <Animated.FlatList
             ref={hotListRef as any}
@@ -365,7 +365,7 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* 直播列表 */}
+        {/* Live list */}
         <View key="live" collapsable={false}>
           <Animated.FlatList
             ref={liveListRef as any}
@@ -424,7 +424,7 @@ export default function HomeScreen() {
               liveLoading ? (
                 <View style={styles.footer}>
                   <ActivityIndicator color="#00AEEC" />
-                  <Text style={styles.footerText}>加载中...</Text>
+                  <Text style={styles.footerText}>Loading...</Text>
                 </View>
               ) : null
             }
@@ -437,7 +437,7 @@ export default function HomeScreen() {
         </View>
       </PagerView>
 
-      {/* 绝对定位导航栏 */}
+      {/* Absolutely positioned navigation bar */}
       <Animated.View
         style={[
           styles.navBar,
@@ -478,7 +478,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="search" size={14} color={theme.textSub} />
-            <Text style={[styles.searchPlaceholder, { color: theme.textSub }]}>搜索视频、UP主...</Text>
+            <Text style={[styles.searchPlaceholder, { color: theme.textSub }]}>Search videos and creators...</Text>
           </TouchableOpacity>
           <DownloadProgressBtn
             onPress={() => router.push("/downloads" as any)}

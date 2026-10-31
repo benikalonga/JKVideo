@@ -1,21 +1,21 @@
-name: Bug 报告
-description: 报告一个 Bug
+name: Bug report
+description: Report a bug
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        感谢你提交 Bug 报告！请尽量填写完整信息，帮助我们更快定位问题。
+        Thanks for reporting a bug! Please fill in as much as you can to help us find the problem faster.
 
   - type: dropdown
     id: platform
     attributes:
-      label: 运行平台
+      label: Platform
       options:
-        - Android（Dev Build）
-        - Android（Expo Go）
-        - iOS（Dev Build）
-        - iOS（Expo Go）
+        - Android (Dev Build)
+        - Android (Expo Go)
+        - iOS (Dev Build)
+        - iOS (Expo Go)
         - Web
     validations:
       required: true
@@ -23,46 +23,46 @@ body:
   - type: dropdown
     id: category
     attributes:
-      label: 问题分类
+      label: Category
       options:
-        - 视频播放
-        - 直播
-        - 弹幕
-        - 登录 / 账号
-        - 下载
-        - UI / 界面
-        - 其他
+        - Video playback
+        - Live streams
+        - Danmaku (bullet comments)
+        - Sign-in / account
+        - Downloads
+        - UI
+        - Other
     validations:
       required: true
 
   - type: textarea
     id: description
     attributes:
-      label: 问题描述
-      placeholder: 请描述你遇到的问题...
+      label: Description
+      placeholder: Describe the problem you ran into...
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: 复现步骤
+      label: Steps to reproduce
       placeholder: |
-        1. 打开 App
-        2. 点击 ...
-        3. 发现 ...
+        1. Open the app
+        2. Tap ...
+        3. See ...
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: 期望行为
-      placeholder: 你期望发生什么？
+      label: Expected behavior
+      placeholder: What did you expect to happen?
 
   - type: textarea
     id: logs
     attributes:
-      label: 错误日志 / 截图
-      description: 如有控制台报错或截图，请粘贴在此
+      label: Error logs
+      description: Paste any console errors here
       render: shell

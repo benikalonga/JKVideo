@@ -29,10 +29,10 @@ export function LiveMiniPlayer() {
   const videoMiniActive = useVideoStore(s => s.isActive);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  // 关闭时先把 Video 暂停一帧，让 native 释放连接，再 unmount
+  // On close, pause the Video for one frame so native releases the connection, then unmount
   const [paused, setPaused] = useState(false);
 
-  // 切换到不同直播间时重置 paused
+  // Reset paused when switching to a different live room
   useEffect(() => {
     if (isActive) setPaused(false);
   }, [hlsUrl, isActive]);
@@ -52,7 +52,7 @@ export function LiveMiniPlayer() {
 
   const bottomOffset = insets.bottom + 16 + (videoMiniActive ? 106 : 0);
 
-  // Web 端降级：封面图 + LIVE 徽标
+  // Web fallback: cover image + LIVE badge
   if (Platform.OS === 'web') {
     return (
       <Animated.View
@@ -72,7 +72,7 @@ export function LiveMiniPlayer() {
     );
   }
 
-  // Native：实际 HLS 流播放
+  // Native: actual HLS stream playback
   const Video = require('react-native-video').default;
 
   return (
@@ -80,7 +80,7 @@ export function LiveMiniPlayer() {
       style={[styles.container, { bottom: bottomOffset, transform: pan.getTranslateTransform() }]}
       {...panHandlers}
     >
-      {/* pointerEvents="none" 防止 Video 原生层吞噬触摸事件 */}
+      {/* pointerEvents="none" keeps the native Video layer from swallowing touches */}
       <View style={styles.videoArea} pointerEvents="none">
         <Video
           key={hlsUrl}
@@ -99,7 +99,7 @@ export function LiveMiniPlayer() {
         <Text style={styles.liveText}>LIVE</Text>
       </View>
       <Text style={styles.titleText} numberOfLines={1}>{title}</Text>
-      {/* 关闭按钮视觉层，点击逻辑由 hitClose 坐标判断 */}
+      {/* Visual close button; taps are handled by hitClose coordinates */}
       <View style={styles.closeBtn}>
         <Ionicons name="close" size={14} color="#fff" />
       </View>

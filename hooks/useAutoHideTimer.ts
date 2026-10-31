@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 /**
- * 控制栏自动隐藏 hook：show() 后 delayMs 内无交互即隐藏。
- * keep() 用于"按住进度条不让消失"等场景：返回 true 时计时器会被推迟。
+ * Auto-hide hook for controls: hides after delayMs without interaction once show() is called.
+ * keep() covers cases like "holding the progress bar keeps it visible": returning true postpones the timer.
  */
 export function useAutoHideTimer(delayMs = 3000, keep?: () => boolean) {
   const [visible, setVisible] = useState(true);

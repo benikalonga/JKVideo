@@ -21,7 +21,7 @@ jobs:
             const body  = (context.payload.issue.body  || '').toLowerCase();
             const text  = title + ' ' + body;
 
-            // --- 第一层：攻击性内容（词库存于 Secret: ABUSIVE_WORDS，逗号分隔）---
+            // --- Layer 1: abusive content (word list stored in the ABUSIVE_WORDS secret, comma-separated) ---
             const abusiveWords = (process.env.ABUSIVE_WORDS || '').split(',').map(w => w.trim()).filter(Boolean);
             const isAbusive = abusiveWords.some(w => w && text.includes(w.toLowerCase()));
 
@@ -29,12 +29,12 @@ jobs:
               await github.rest.issues.createComment({
                 owner, repo, issue_number,
                 body: [
-                  '你好，',
+                  'Hello,',
                   '',
-                  '此 Issue 包含不文明内容，已自动关闭。',
+                  'This issue contains abusive content and has been closed automatically.',
                   '',
-                  '我们欢迎任何建设性的反馈，但请保持礼貌和尊重。',
-                  '如有 Bug 或功能建议，请使用官方模板重新提交，谢谢。',
+                  'We welcome constructive feedback, but please stay polite and respectful.',
+                  'For bugs or feature requests, please resubmit using the official templates. Thank you.',
                 ].join('\n'),
               });
               await github.rest.issues.update({
@@ -49,13 +49,13 @@ jobs:
               return;
             }
 
-            // --- 第二层：未走模板 ---
+            // --- Layer 2: template not used ---
             const templateMarkers = [
-              '### 运行平台',
-              '### 问题描述',
-              '### 复现步骤',
-              '### 需求背景',
-              '### 建议方案',
+              '### Platform',
+              '### Description',
+              '### Steps to reproduce',
+              '### Background',
+              '### Proposed solution',
             ];
             const isFromTemplate = templateMarkers.some(m => body.includes(m.toLowerCase()));
 
@@ -63,14 +63,14 @@ jobs:
               await github.rest.issues.createComment({
                 owner, repo, issue_number,
                 body: [
-                  '感谢你的反馈！',
+                  'Thanks for your feedback!',
                   '',
-                  '此 Issue 未按照模板填写，已自动关闭。',
+                  'This issue did not follow a template and has been closed automatically.',
                   '',
-                  '请使用以下方式重新提交：',
-                  '- 🐛 **Bug 报告** → 使用 [Bug 报告模板](../../issues/new?template=bug_report.yml)',
-                  '- 💡 **功能建议** → 使用 [功能建议模板](../../issues/new?template=feature_request.yml)',
-                  '- 💬 **使用咨询** → 前往 [Discussions](../../discussions) 提问',
+                  'Please resubmit using one of the following:',
+                  '- 🐛 **Bug report** → use the [bug report template](../../issues/new?template=bug_report.yml)',
+                  '- 💡 **Feature request** → use the [feature request template](../../issues/new?template=feature_request.yml)',
+                  '- 💬 **Questions** → ask in [Discussions](../../discussions)',
                 ].join('\n'),
               });
               await github.rest.issues.update({

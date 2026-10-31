@@ -28,7 +28,7 @@ export default function LiveDetailScreen() {
   const theme = useTheme();
   const id = parseInt(roomId ?? "0", 10);
 
-  // 进入详情页时立即清除小窗（useLayoutEffect 在绘制前同步执行）
+  // Clear the mini player as soon as the detail page opens (useLayoutEffect runs synchronously before paint)
   useLayoutEffect(() => {
     useLiveStore.getState().clearLive();
   }, []);
@@ -56,7 +56,7 @@ export default function LiveDetailScreen() {
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.topTitle, { color: theme.text }]} numberOfLines={1}>
-          {room?.title ?? "直播间"}
+          {room?.title ?? "Live room"}
         </Text>
         {isLive && hlsUrl ? (
           <TouchableOpacity
@@ -90,7 +90,7 @@ export default function LiveDetailScreen() {
           onPress={() => setTab("intro")}
         >
           <Text style={[styles.tabLabel, { color: theme.textSub }, tab === "intro" && styles.tabActive]}>
-            简介
+            About
           </Text>
           {tab === "intro" && <View style={styles.tabUnderline} />}
         </TouchableOpacity>
@@ -101,7 +101,7 @@ export default function LiveDetailScreen() {
           <Text
             style={[styles.tabLabel, { color: theme.textSub }, tab === "danmaku" && styles.tabActive]}
           >
-            弹幕{danmakus.length > 0 ? ` ${danmakus.length}` : ""}
+            Danmaku{danmakus.length > 0 ? ` ${danmakus.length}` : ""}
           </Text>
           {tab === "danmaku" && <View style={styles.tabUnderline} />}
         </TouchableOpacity>
@@ -124,12 +124,12 @@ export default function LiveDetailScreen() {
                 {isLive ? (
                   <View style={styles.livePill}>
                     <View style={styles.liveDot} />
-                    <Text style={styles.livePillText}>直播中</Text>
+                    <Text style={styles.livePillText}>Live</Text>
                   </View>
                 ) : (
                   <View style={[styles.livePill, styles.offlinePill]}>
                     <Text style={[styles.livePillText, styles.offlinePillText]}>
-                      未开播
+                      Offline
                     </Text>
                   </View>
                 )}
@@ -160,7 +160,7 @@ export default function LiveDetailScreen() {
                 />
                 <Text style={[styles.anchorName, { color: theme.text }]}>{anchor.uname}</Text>
                 <TouchableOpacity style={styles.followBtn}>
-                  <Text style={styles.followTxt}>+ 关注</Text>
+                  <Text style={styles.followTxt}>+ Follow</Text>
                 </TouchableOpacity>
               </View>
             )}

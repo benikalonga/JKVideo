@@ -35,7 +35,7 @@ export function LoginModal({ visible, onClose }: Props) {
   const login = useAuthStore((s) => s.login);
   const theme = useTheme();
 
-  // sheet 滑入动画
+  // Sheet slide-in animation
   const slideY = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export function LoginModal({ visible, onClose }: Props) {
     try {
       const { status: perm } = await MediaLibrary.requestPermissionsAsync();
       if (perm !== "granted") {
-        Alert.alert("提示", "需要相册权限才能保存图片");
+        Alert.alert("Notice", "Photo library permission is required to save the image");
         return;
       }
       qrRef.current.toDataURL(async (base64: string) => {
@@ -120,21 +120,21 @@ export function LoginModal({ visible, onClose }: Props) {
             encoding: FileSystem.EncodingType.Base64,
           });
           await MediaLibrary.saveToLibraryAsync(dest);
-          Alert.alert("已保存", "二维码已存入相册，请用哔哩哔哩扫码登录", [
-            { text: "关闭", style: "cancel" },
+          Alert.alert("Saved", "QR code saved to your photos. Scan it with the Bilibili app to sign in", [
+            { text: "Close", style: "cancel" },
             {
-              text: "打开哔哩哔哩",
+              text: "Open Bilibili",
               onPress: () => Linking.openURL("bilibili://"),
             },
           ]);
         } catch {
-          Alert.alert("失败", "保存失败，请重试");
+          Alert.alert("Failed", "Could not save. Please try again");
         } finally {
           setSaving(false);
         }
       });
     } catch {
-      Alert.alert("失败", "保存失败，请重试");
+      Alert.alert("Failed", "Could not save. Please try again");
       setSaving(false);
     }
   }
@@ -146,15 +146,15 @@ export function LoginModal({ visible, onClose }: Props) {
       animationType="none"
       onRequestClose={onClose}
     >
-      {/* 遮罩固定不动 */}
+      {/* Backdrop stays fixed */}
       <View style={styles.overlay} pointerEvents="box-none" />
 
-      {/* sheet 独立滑入 */}
+      {/* Sheet slides in on its own */}
       <Animated.View
         style={[styles.sheetWrapper, { transform: [{ translateY: slideY }] }]}
       >
         <View style={[styles.sheet, { backgroundColor: theme.sheetBg }]}>
-          <Text style={[styles.title, { color: theme.modalText }]}>扫码登录</Text>
+          <Text style={[styles.title, { color: theme.modalText }]}>Sign in with QR code</Text>
           {status === "loading" && (
             <ActivityIndicator
               size="large"
@@ -184,22 +184,22 @@ export function LoginModal({ visible, onClose }: Props) {
               </View>
               <Text style={[styles.hint, { color: theme.modalTextSub }]}>
                 {status === "scanned"
-                  ? "扫描成功，请在手机确认"
-                  : "使用 B站 APP 扫一扫"}
+                  ? "Scanned. Confirm on your phone"
+                  : "Scan with the Bilibili app"}
               </Text>
             </>
           )}
           {status === "error" && (
             <View style={styles.errorBox}>
-              <Text style={[styles.hint, { color: theme.modalTextSub }]}>二维码已过期</Text>
+              <Text style={[styles.hint, { color: theme.modalTextSub }]}>QR code expired</Text>
               <TouchableOpacity style={styles.retryBtn} onPress={initQRCode}>
                 <Ionicons name="refresh" size={14} color="#fff" />
-                <Text style={styles.retryTxt}>重新获取</Text>
+                <Text style={styles.retryTxt}>Get a new one</Text>
               </TouchableOpacity>
             </View>
           )}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeTxt}>关闭</Text>
+            <Text style={styles.closeTxt}>Close</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

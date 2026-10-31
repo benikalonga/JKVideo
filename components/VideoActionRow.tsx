@@ -13,18 +13,18 @@ import { formatCount } from "../utils/format";
 import { toast } from "../utils/toast";
 
 interface Props {
-  /** 视频统计：点赞/投币/收藏/评论数。读不到时按钮下方不显示数字。 */
+  /** Video stats: likes/coins/favorites/comments. If unavailable, no number is shown under the button. */
   stat?: {
     like: number;
     coin: number;
     favorite: number;
     reply?: number;
   } | null;
-  /** 已加载的弹幕条数（拿不到时按钮显示纯文字"弹幕"）。 */
+  /** Number of loaded danmaku (if unavailable, the button shows the plain label "Danmaku"). */
   danmakuCount?: number;
-  /** 分享时显示的视频标题。 */
+  /** Video title shown when sharing. */
   title?: string;
-  /** 分享时附带的链接（一般是 https://www.bilibili.com/video/BVxxx）。 */
+  /** Link attached when sharing (usually https://www.bilibili.com/video/BVxxx). */
   shareUrl?: string;
   onDownload: () => void;
   onComments: () => void;
@@ -44,7 +44,7 @@ export const VideoActionRow = React.memo(function VideoActionRow({
 
   const handleShare = async () => {
     if (!shareUrl) {
-      toast("暂无分享链接");
+      toast("No share link available");
       return;
     }
     try {
@@ -53,7 +53,7 @@ export const VideoActionRow = React.memo(function VideoActionRow({
         url: shareUrl,
       });
     } catch {
-      // 用户取消或系统拒绝，无需处理
+      // User cancelled or the system refused; nothing to do
     }
   };
 
@@ -65,57 +65,57 @@ export const VideoActionRow = React.memo(function VideoActionRow({
     >
       {/* <Btn
         icon="thumbs-up-outline"
-        label={stat?.like ? formatCount(stat.like) : "点赞"}
-        onPress={() => toast("暂未实现")}
+        label={stat?.like ? formatCount(stat.like) : "Like"}
+        onPress={() => toast("Not implemented yet")}
         color={theme.text}
         bg={theme.inputBg}
       /> */}
       {/* <Btn
         icon="thumbs-down-outline"
-        label="不喜欢"
-        onPress={() => toast("暂未实现")}
+        label="Dislike"
+        onPress={() => toast("Not implemented yet")}
         color={theme.text}
         bg={theme.inputBg}
       /> */}
       <Btn
         icon="chatbubble-outline"
-        label={stat?.reply ? formatCount(stat.reply) : "评论"}
+        label={stat?.reply ? formatCount(stat.reply) : "Comments"}
         onPress={onComments}
         color={theme.text}
         bg={theme.inputBg}
       />
       <Btn
         icon="chatbox-ellipses-outline"
-        label={danmakuCount ? formatCount(danmakuCount) : "弹幕"}
+        label={danmakuCount ? formatCount(danmakuCount) : "Danmaku"}
         onPress={onDanmaku}
         color={theme.text}
         bg={theme.inputBg}
       />
       {/* <Btn
         icon="logo-bitcoin"
-        label={stat?.coin ? formatCount(stat.coin) : "投币"}
-        onPress={() => toast("暂未实现")}
+        label={stat?.coin ? formatCount(stat.coin) : "Coin"}
+        onPress={() => toast("Not implemented yet")}
         color={theme.text}
         bg={theme.inputBg}
       /> */}
       <Btn
         icon="cloud-download-outline"
-        label="下载"
+        label="Download"
         onPress={onDownload}
         color={theme.text}
         bg={theme.inputBg}
       />
       <Btn
         icon="arrow-redo-outline"
-        label="分享"
+        label="Share"
         onPress={handleShare}
         color={theme.text}
         bg={theme.inputBg}
       />
       <Btn
         icon="star-outline"
-        label={stat?.favorite ? formatCount(stat.favorite) : "收藏"}
-        onPress={() => toast("暂未实现")}
+        label={stat?.favorite ? formatCount(stat.favorite) : "Favorite"}
+        onPress={() => toast("Not implemented yet")}
         color={theme.text}
         bg={theme.inputBg}
       />

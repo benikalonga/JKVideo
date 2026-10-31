@@ -18,11 +18,11 @@ interface Props {
   danmakus?: DanmakuItem[];
   onTimeUpdate?: (t: number) => void;
   initialTime?: number;
-  /** 详情页将其挂到弹幕 Sheet 的打开动作。仅小窗口生效，全屏暂不显示。 */
+  /** The detail page wires this to opening the danmaku sheet. Small player only; hidden in fullscreen for now. */
   onDanmakuListPress?: () => void;
-  /** 播放器左上角返回按钮回调，跟随小窗口控制栏一起显隐。 */
+  /** Callback for the back button in the top left; shown and hidden with the small player controls. */
   onBack?: () => void;
-  /** 视频封面 URL。playData 未到达 / <Video> 首帧未到达时用作 poster，避免黑闪 */
+  /** Video cover URL. Used as a poster before playData or the first <Video> frame arrives, to avoid a black flash */
   coverUrl?: string;
 }
 
@@ -34,7 +34,7 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, b
   const lastTimeRef = useRef(0);
   const seededRef = useRef(false);
   const theme = useTheme();
-  // 续播：第一次拿到 initialTime 时塞进 lastTimeRef
+  // Resume playback: store initialTime in lastTimeRef the first time it arrives
   if (!seededRef.current && typeof initialTime === 'number' && initialTime > 0) {
     lastTimeRef.current = initialTime;
     seededRef.current = true;
@@ -61,13 +61,13 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, b
   }, []);
 
   if (!playData) {
-    // 没拿到 playData 时背景用主题色（与页面同色，消除"页面→纯黑"撞色），有封面则铺封面
+    // Without playData, use the theme color as background (same as the page, avoiding a page-to-black clash); with a cover, show the cover
     return (
       <View style={[{ width, height: VIDEO_HEIGHT, backgroundColor: theme.card }, styles.placeholder]}>
         {!!coverUrl && (
           <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
         )}
-        <Text style={[styles.placeholderText, { color: coverUrl ? '#fff' : theme.textSub }]}>视频加载中...</Text>
+        <Text style={[styles.placeholderText, { color: coverUrl ? '#fff' : theme.textSub }]}>Loading video...</Text>
       </View>
     );
   }
@@ -89,7 +89,7 @@ export function VideoPlayer({ playData, qualities, currentQn, onQualityChange, b
 
   return (
     <>
-      {/* 竖屏和全屏互斥渲染，避免同时挂载两个视频解码器 */}
+      {/* Portrait and fullscreen render exclusively, so two video decoders are never mounted at once */}
       {!fullscreen && (
         <NativeVideoPlayer
           ref={portraitRef}

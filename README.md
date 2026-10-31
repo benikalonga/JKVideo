@@ -2,13 +2,13 @@
 
 <div align="center">
 
-<img src="https://img.shields.io/badge/JKVideo-仿B站客户端-00AEEC?style=for-the-badge&logo=bilibili&logoColor=white" alt="JKVideo"/>
+<img src="https://img.shields.io/badge/JKVideo-Bilibili_Client-00AEEC?style=for-the-badge&logo=bilibili&logoColor=white" alt="JKVideo"/>
 
 # JKVideo
 
-**高颜值第三方 B 站 React Native 客户端**
+**A feature-rich third-party Bilibili React Native client**
 
-*A feature-rich Bilibili-like app with DASH playback, real-time danmaku, WBI signing & live streaming*
+*DASH playback · Real-time danmaku · WBI signing · Live streaming · Cross-platform*
 
 ---
 
@@ -18,94 +18,61 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-lightgrey)](README.md)
 
-[English](README.en.md) · [快速开始](#快速开始) · [功能亮点](#功能亮点) · [贡献](CONTRIBUTING.md)
+[Quick Start](#quick-start) · [Features](#features) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-> ## ⚠️ 重要公告
->
-> 本项目已收到**哔哩哔哩（bilibili）律师函**，要求停止对 B 站 API 的调用及相关仿制行为。
->
-> 为尊重知识产权及相关法律法规，本仓库**即日起停止后续维护与更新**，不再接受新的 Issue 和 Pull Request。
->
-> 现有代码仅作学习参考保留，请勿将本项目用于任何商业或违法用途。
->
-> 感谢所有支持过本项目的朋友。
+## Features
+
+🎬 **Full DASH Playback**
+Bilibili DASH stream → `buildDashMpdUri()` local MPD → ExoPlayer native decode, supports 1080P+ & 4K HDR
+
+💬 **Complete Danmaku System**
+Video danmaku with XML timeline sync + 5-lane floating overlay; Live danmaku via WebSocket with guard marks & gift counting
+
+🔐 **WBI Signing**
+Pure TypeScript MD5 implementation, zero external crypto dependencies, 12h auto-cached nav interface
+
+🏠 **Smart Home Layout**
+BigVideoCard inline DASH muted autoplay + swipe-to-seek gesture + live card interleaving + dual-column grid
+
+📺 **Global Mini Player**
+Persistent bottom overlay player survives navigation, VideoStore cross-component state sync
+
+🔑 **QR Code Login**
+QR code generation + 2s polling + automatic SESSDATA extraction from response headers
+
+📥 **Download + LAN Sharing**
+Multi-quality background download, built-in HTTP server generates LAN QR code for same-Wi-Fi playback
+
+🌐 **Cross-Platform**
+Android · iOS · Web, Expo Go scan-to-run in 5 minutes, Dev Build unlocks full DASH playback
 
 ---
 
-## 截图预览
+## Tech Stack
 
-<table>
-  <tr>
-    <td align="center"><img src="public/p1.jpg" width="180"/><br/><sub>首页热门 · 内联视频 · 穿插直播</sub></td>
-    <td align="center"><img src="public/p2.jpg" width="180"/><br/><sub>首页直播 · 关注房间· 分区筛选</sub></td>
-    <td align="center"><img src="public/p3.jpg" width="180"/><br/><sub>直播详情 · 4K HDR · 多清晰度</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="public/p4.jpg" width="180"/><br/><sub>下载管理 · 局域网分享二维码</sub></td>
-    <td align="center"><img src="public/p5.jpg" width="180"/><br/><sub>直播详情 ·实时弹幕 · 清晰度切换</sub></td>
-    <td align="center"><img src="public/p6.jpg" width="180"/><br/><sub>视频弹幕 · 同步加载</sub></td>
-  </tr>
-</table>
-
-## 演示视频
-
-https://github.com/tiajinsha/JKVideo/releases/download/v1.0.0/6490dcd9dba9a243a7cd8f00359cc285.mp4
-
----
-
-## 功能亮点
-
-🎬 **DASH 完整播放**
-Bilibili DASH 流 → `buildDashMpdUri()` 生成本地 MPD → ExoPlayer 原生解码，支持 1080P + 4K HDR杜比视界
-
-💬 **完整弹幕系统**
-视频弹幕 XML 时间轴同步 + 5 车道飘屏覆盖；直播弹幕 WebSocket 实时接收 + 舰长标记 + 礼物计数
-
-🔐 **WBI 签名实现**
-纯 TypeScript 手写 MD5，无任何外部加密依赖，nav 接口 12h 自动缓存
-
-🏠 **智能首页排布**
-BigVideoCard 内联 DASH 静音自动播放 + 水平手势快进 + 直播卡片穿插 + 双列混排
-
-📺 **全局迷你播放器**
-切换页面后底部浮层续播，VideoStore 跨组件状态同步
-
-🔑 **扫码登录**
-二维码生成 + 2s 轮询 + 响应头 Cookie 自动提取 SESSDATA
-
-📥 **下载 + 局域网分享**
-多清晰度后台下载，内置 HTTP 服务器生成局域网 QR 码，同 Wi-Fi 设备扫码直接播放
-
-🌐 **跨平台运行**
-Android · iOS · Web，Expo Go 扫码 5 分钟运行，Dev Build 解锁完整 DASH 播放
-
----
-
-## 技术架构
-
-| 层 | 技术 |
+| Layer | Technology |
 |---|---|
-| 框架 | React Native 0.83 + Expo SDK 55 |
-| 路由 | expo-router v4（文件系统路由，Stack 导航） |
-| 状态管理 | Zustand |
-| 网络请求 | Axios |
-| 本地存储 | @react-native-async-storage/async-storage |
-| 视频播放 | react-native-video（DASH MPD / HLS / MP4） |
-| 降级播放 | react-native-webview（HTML5 video 注入） |
-| 页面滑动 | react-native-pager-view |
-| 图标 | @expo/vector-icons（Ionicons） |
+| Framework | React Native 0.83 + Expo SDK 55 |
+| Navigation | expo-router v4 (file-based, Stack) |
+| State | Zustand |
+| HTTP | Axios |
+| Storage | @react-native-async-storage/async-storage |
+| Video | react-native-video (DASH MPD / HLS / MP4) |
+| Fallback | react-native-webview (HTML5 video injection) |
+| Pager | react-native-pager-view |
+| Icons | @expo/vector-icons (Ionicons) |
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 方式一：Expo Go（5 分钟，无需编译）
+### Option 1: Expo Go (5 minutes, no build required)
 
-> 部分清晰度受限，视频播放降级为 WebView 方案
+> Some quality options limited; video falls back to WebView
 
 ```bash
 git clone https://github.com/tiajinsha/JKVideo.git
@@ -114,78 +81,78 @@ npm install
 npx expo start
 ```
 
-用 Expo Go App（[Android](https://expo.dev/go) / [iOS](https://expo.dev/go)）扫描终端二维码即可运行。
+Scan the QR code with [Expo Go](https://expo.dev/go) on Android or iOS.
 
-### 方式二：Dev Build（完整功能，推荐）
+### Option 2: Dev Build (Full features, recommended)
 
-> 支持 DASH 1080P+ 原生播放、完整弹幕系统
+> Supports DASH 1080P+ native playback, full danmaku system
 
 ```bash
 npm install
 npx expo run:android   # Android
-npx expo run:ios       # iOS（需 macOS + Xcode）
+npx expo run:ios       # iOS (requires macOS + Xcode)
 ```
 
-### 方式三：Web 端
+### Option 3: Web
 
 ```bash
 npm install
 npx expo start --web
 ```
 
-> Web 端图片需本地代理服务器绕过防盗链：`node scripts/proxy.js`（端口 3001）
+> Web requires a local proxy server for image anti-hotlinking: `node scripts/proxy.js` (port 3001)
 
-### 直接安装（Android）
+### Direct Install (Android)
 
-前往 [Releases](https://github.com/tiajinsha/JKVideo/releases/latest) 下载最新 APK，无需编译，安装即用。
+Download the latest APK from [Releases](https://github.com/tiajinsha/JKVideo/releases/latest) — no build needed.
 
-> 需在 Android 设置中开启「安装未知来源应用」
+> Enable "Install from unknown sources" in Android settings
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 app/
-  index.tsx            # 首页（PagerView 热门/直播 Tab）
-  video/[bvid].tsx     # 视频详情（播放 + 简介/评论/弹幕）
-  live/[roomId].tsx    # 直播详情（HLS 播放 + 实时弹幕）
-  search.tsx           # 搜索页
-  downloads.tsx        # 下载管理页
-  settings.tsx         # 设置页（画质 + 退出登录）
+  index.tsx            # Home (PagerView Hot/Live tabs)
+  video/[bvid].tsx     # Video detail (player + info/comments/danmaku)
+  live/[roomId].tsx    # Live room (HLS player + real-time danmaku)
+  search.tsx           # Search page
+  downloads.tsx        # Download manager
+  settings.tsx         # Settings (quality + logout)
 
-components/            # UI 组件（播放器、弹幕、卡片等）
-hooks/                 # 数据 Hooks（视频列表、播放流、弹幕等）
-services/              # Bilibili API 封装（axios + Cookie 拦截）
-store/                 # Zustand 状态（登录、下载、播放、设置）
-utils/                 # 工具函数（格式化、图片代理、MPD 构建）
+components/            # UI components (player, danmaku, cards, etc.)
+hooks/                 # Data hooks (video list, stream URLs, danmaku, etc.)
+services/              # Bilibili API wrapper (axios + cookie interceptor)
+store/                 # Zustand stores (auth, download, playback, settings)
+utils/                 # Utilities (format, image proxy, MPD builder)
 ```
 
 ---
 
-## 已知限制
+## Known Limitations
 
-| 限制 | 原因 |
+| Limitation | Reason |
 |---|---|
-| 4K / 1080P+ 需要大会员账号登录 | B 站 API 策略限制 |
-| FLV 直播流不支持 | HTML5 / ExoPlayer 均不支持 FLV，已自动选 HLS |
-| Web 端需本地代理 | B 站图片防盗链（Referer 限制） |
-| 动态流 / 投稿 / 点赞 | 需要 `bili_jct` CSRF Token，暂未实现 |
-| 二维码 10 分钟过期 | 关闭登录弹窗重新打开即可刷新 |
+| 4K / 1080P+ requires premium account | Bilibili API restriction |
+| FLV live streams not supported | Neither HTML5 nor ExoPlayer support FLV; HLS auto-selected |
+| Web requires local proxy | Bilibili image Referer anti-hotlinking |
+| Feed / like / collect features | Requires `bili_jct` CSRF token, not yet implemented |
+| QR code expires after 10 minutes | Close and reopen the login modal to refresh |
 
 ---
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 和 PR！请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Issues and PRs are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ---
 
-## 免责声明
+## Disclaimer
 
-本项目仅供个人学习研究使用，不得用于商业用途。
-所有视频内容版权归原作者及哔哩哔哩所有。
-本项目与哔哩哔哩官方无任何关联。
+This project is for personal learning and research purposes only. Not for commercial use.
+All video content copyright belongs to the original authors and Bilibili.
+This project is not affiliated with Bilibili in any way.
 
 ---
 
@@ -197,25 +164,6 @@ utils/                 # 工具函数（格式化、图片代理、MPD 构建）
 
 <div align="center">
 
-如果这个项目对你有帮助，欢迎点一个 ⭐ Star！
-
----
-
-## 请作者喝杯咖啡 ☕
-
-如果这个项目对你有所帮助，欢迎请作者喝杯咖啡，你的支持是持续开发的最大动力，感谢每一位愿意打赏的朋友！
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="public/wxpay.jpg" width="180"/><br/>
-      <sub>微信支付</sub>
-    </td>
-    <td align="center">
-      <img src="public/alipay.jpg" width="180"/><br/>
-      <sub>支付宝</sub>
-    </td>
-  </tr>
-</table>
+If this project helps you, please give it a ⭐ Star!
 
 </div>

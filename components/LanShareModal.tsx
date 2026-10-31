@@ -74,7 +74,7 @@ export function LanShareModal({ visible, task, onClose }: Props) {
       <View style={styles.overlay} pointerEvents="box-none" />
       <Animated.View style={[styles.sheetWrapper, { transform: [{ translateY: slideY }] }]}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>局域网分享</Text>
+          <Text style={styles.title}>LAN sharing</Text>
 
           {task && (
             <Text style={styles.taskTitle} numberOfLines={2}>
@@ -111,14 +111,14 @@ export function LanShareModal({ visible, task, onClose }: Props) {
                 />
               </TouchableOpacity>
 
-              <Text style={styles.hint}>同一 WiFi 下，用浏览器扫码或输入链接即可播放</Text>
+              <Text style={styles.hint}>On the same Wi-Fi, scan the QR code or open the link in a browser to play</Text>
             </>
           ) : (
-            <Text style={styles.hint}>启动服务器失败，请确认已连接 WiFi12312</Text>
+            <Text style={styles.hint}>Failed to start the server. Make sure you are connected to Wi-Fi.</Text>
           )}
 
           <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
-            <Text style={styles.closeTxt}>关闭</Text>
+            <Text style={styles.closeTxt}>Close</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

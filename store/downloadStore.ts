@@ -42,7 +42,7 @@ export const useDownloadStore = create<DownloadStore>((set, get) => ({
       if (!prev) return s;
       const updated = { ...prev, ...patch };
       const next = { ...s.tasks, [key]: updated };
-      // 只在状态/localUri变化时持久化，progress 不持久化（避免高频写 AsyncStorage）
+      // Persist only when status/localUri changes; progress is not persisted (avoids frequent AsyncStorage writes)
       if (patch.status !== undefined || patch.localUri !== undefined || patch.error !== undefined || patch.fileSize !== undefined) {
         persistTasks(next);
       }
@@ -60,17 +60,17 @@ export const useDownloadStore = create<DownloadStore>((set, get) => ({
   },
 
   loadFromStorage: async () => {
-    // 已加载过则跳过，防止重复调用覆盖正在进行的下载状态
+    // Skip if already loaded, so a repeat call does not overwrite in-progress download state
     if (get().hasLoaded) return;
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved: Record<string, DownloadTask> = JSON.parse(raw);
-        // 重启后 downloading 任务无法续传，标记为 error
+        // Downloading tasks cannot resume after a restart; mark them as errors
         Object.keys(saved).forEach((k) => {
           if (saved[k].status === 'downloading') {
             saved[k].status = 'error';
-            saved[k].error = '下载被中断，请重试';
+            saved[k].error = 'Download was interrupted, please retry';
             saved[k].progress = 0;
           }
         });
@@ -85,7 +85,7 @@ export const useDownloadStore = create<DownloadStore>((set, get) => ({
 }));
 
 function persistTasks(tasks: Record<string, DownloadTask>) {
-  // 只持久化 done/error，downloading 重启后无法续传无需保存
+  // Persist only done/error; downloading tasks cannot resume after a restart, so there is no need to save them
   const toSave: Record<string, DownloadTask> = {};
   Object.keys(tasks).forEach((k) => {
     if (tasks[k].status !== 'downloading') {

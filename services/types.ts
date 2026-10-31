@@ -1,6 +1,6 @@
 /**
- * 三种播放器（视频详情、首页大卡、直播）暴露的统一 ref 接口。
- * 不一定每个实现都全部支持，未实现的方法可空操作。
+ * Unified ref interface exposed by the three players (video detail, home big card, live).
+ * Not every implementation supports everything; unimplemented methods can be no-ops.
  */
 export interface IVideoPlayer {
   seek: (timeSec: number) => void;
@@ -82,7 +82,7 @@ export interface DashVideoItem {
   stat:any;
   frameRate: string;
   segment_base?: DashSegmentBase;
-  dolby_type?: number;  // 1=杜比视界
+  dolby_type?: number;  // 1 = Dolby Vision
   hdr_type?: number;    // 1=HDR
 }
 
@@ -107,7 +107,7 @@ export interface PlayUrlResponse {
     audio: DashAudioItem[];
   };
   dolby?: {
-    type: number;          // 1=杜比全景声
+    type: number;          // 1 = Dolby Atmos
     audio?: DashAudioItem[];
   };
   quality: number;
@@ -131,17 +131,17 @@ export interface VideoShotData {
 }
 
 export interface DanmakuItem {
-  time: number;       // 秒（float），弹幕出现时间
-  mode: 1 | 4 | 5;   // 1=滚动, 4=底部固定, 5=顶部固定
+  time: number;       // Seconds (float) when the danmaku appears
+  mode: 1 | 4 | 5;   // 1 = scrolling, 4 = fixed bottom, 5 = fixed top
   fontSize: number;
-  color: number;      // 0xRRGGBB 十进制整数
+  color: number;      // 0xRRGGBB as a decimal integer
   text: string;
   uname?: string;
   isAdmin?: boolean;
-  guardLevel?: number;  // 0=无, 1=总督, 2=提督, 3=舰长
+  guardLevel?: number;  // 0 = none, 1 = Governor, 2 = Admiral, 3 = Captain
   medalLevel?: number;
   medalName?: string;
-  timeline?: string;    // "2024-01-01 12:00:00" 直播弹幕时间戳
+  timeline?: string;    // "2024-01-01 12:00:00" live danmaku timestamp
 }
 
 export interface LiveRoom {
@@ -161,7 +161,7 @@ export interface LiveRoomDetail {
   uid: number;
   title: string;
   description: string;
-  live_status: number; // 1=直播中, 0=未开播
+  live_status: number; // 1 = live, 0 = offline
   online: number;
   area_name: string;
   parent_area_name: string;
