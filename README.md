@@ -1,3 +1,5 @@
+> **Note:** This is a copy of [tiajinsha/JKVideo](https://github.com/tiajinsha/JKVideo), kept for AI code-review research. All credit goes to the original authors. Licensed under the original [MIT License](./LICENSE). See [UPSTREAM.md](./UPSTREAM.md) for details.
+
 <div align="center">
 
 <img src="https://img.shields.io/badge/JKVideo-仿B站客户端-00AEEC?style=for-the-badge&logo=bilibili&logoColor=white" alt="JKVideo"/>
